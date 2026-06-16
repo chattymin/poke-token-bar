@@ -43,6 +43,28 @@ struct SettingsView: View {
                 Text("켜면 공식 한도 % 조회를 건너뜁니다")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
+                HStack(spacing: 8) {
+                    Button {
+                        Task { await store.refreshLimitTokenFromKeychain() }
+                    } label: {
+                        if store.isRefreshingLimitToken {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Text("한도 토큰 캐시 갱신")
+                        }
+                    }
+                    .disabled(store.disableKeychainAccess || store.isRefreshingLimitToken)
+                    Text("누를 때만 Keychain 확인")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+                if let limitTokenRefreshError = store.limitTokenRefreshError {
+                    Text(limitTokenRefreshError)
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                        .lineLimit(2)
+                }
             }
 
             VStack(alignment: .leading, spacing: 4) {

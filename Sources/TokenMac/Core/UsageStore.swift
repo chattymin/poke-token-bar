@@ -18,7 +18,9 @@ final class UsageStore {
     private(set) var limitsAvailable = true
     private(set) var lastUpdated: Date?
     private(set) var isRefreshing = false
+    private(set) var isRefreshingLimitToken = false
     private(set) var lastErrorDescription: String?
+    private(set) var limitTokenRefreshError: String?
 
     // MARK: 설정 (UserDefaults)
 
@@ -328,6 +330,23 @@ final class UsageStore {
         let summary = snapshots.map { "\($0.providerID):\($0.today?.date ?? "nil")=\($0.todayTotalTokens)" }
             .joined(separator: ", ")
         AppLog.write("refresh done [\(summary)]")
+    }
+
+    func refreshLimitTokenFromKeychain() async {
+        guard !isRefreshingLimitToken else { return }
+        isRefreshingLimitToken = true
+        defer { isRefreshingLimitToken = false }
+
+        do {
+            limits = try await limitsProvider.fetch(allowKeychainPrompt: true)
+            limitsAvailable = true
+            limitTokenRefreshError = nil
+            AppLog.write("limits refreshed from keychain by user action")
+        } catch {
+            limitTokenRefreshError = "\(error)"
+            if limits == nil { limitsAvailable = false }
+            AppLog.write("limits user refresh failed: \(error)")
+        }
     }
 
     // MARK: 한도 알림 (ClaudeBar 임계값 패턴)

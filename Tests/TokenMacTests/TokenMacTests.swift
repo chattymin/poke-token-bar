@@ -151,3 +151,26 @@ final class KeychainNoUIQueryTests: XCTestCase {
     }
 }
 #endif
+
+final class OAuthCredentialDataTests: XCTestCase {
+    func testCredentialParsesMillisecondExpiration() {
+        let futureMillis = Int(Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000)
+        let data = """
+        {"claudeAiOauth":{"accessToken":"token-1","expiresAt":\(futureMillis)}}
+        """.data(using: .utf8)!
+
+        let credential = OAuthCredentialData.credential(from: data)
+
+        XCTAssertEqual(credential?.accessToken, "token-1")
+        XCTAssertEqual(credential?.isExpired, false)
+    }
+
+    func testCredentialTreatsPastExpirationAsExpired() {
+        let pastMillis = Int(Date().addingTimeInterval(-3600).timeIntervalSince1970 * 1000)
+        let data = """
+        {"claudeAiOauth":{"accessToken":"token-1","expiresAt":\(pastMillis)}}
+        """.data(using: .utf8)!
+
+        XCTAssertEqual(OAuthCredentialData.credential(from: data)?.isExpired, true)
+    }
+}
