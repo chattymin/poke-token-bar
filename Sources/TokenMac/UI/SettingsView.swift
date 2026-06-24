@@ -25,7 +25,9 @@ struct SettingsView: View {
             }
             .pickerStyle(.menu)
 
+            Toggle("메뉴바를 캐릭터로 표시", isOn: $store.companionInMenuBar)
             Toggle("메뉴바 코인 회전", isOn: $store.spinEnabled)
+                .disabled(store.companionInMenuBar)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("메뉴바 표시 항목 (복수 선택)")

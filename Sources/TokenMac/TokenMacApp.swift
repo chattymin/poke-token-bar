@@ -20,10 +20,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var store: UsageStore!
     private var spinIndex = 0
     private var spinTimer: Timer?
+    private var companion: CompanionStore!
+    private var companionTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         store = UsageStore()
+        companion = CompanionStore()
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
@@ -35,7 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         popover.contentViewController = NSHostingController(
-            rootView: PopoverView().environment(store))
+            rootView: PopoverView().environment(store).environment(companion))
         popover.behavior = .transient
 
         observeStore()
@@ -49,6 +52,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             _ = store.isStale
             _ = store.spinEnabled
             _ = store.isLimitWarning
+            _ = store.companionInMenuBar
         } onChange: { [weak self] in
             Task { @MainActor in
                 guard let self else { return }
@@ -64,6 +68,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         button.title = title.isEmpty ? "" : " " + title
         button.appearsDisabled = store.isStale
 
+        updateCompanion()
+
+        if store.companionInMenuBar {
+            // Companion 모드: 코인 정지, 캐릭터 프레임 타이머로 애니메이션
+            spinTimer?.invalidate(); spinTimer = nil; spinIndex = 0
+            if companionTimer == nil {
+                renderCompanionFrame()
+                let t = Timer(timeInterval: 1.0 / 8.0, repeats: true) { [weak self] _ in
+                    Task { @MainActor in self?.renderCompanionFrame() }
+                }
+                RunLoop.main.add(t, forMode: .common)
+                companionTimer = t
+            }
+            return
+        }
+
+        // Classic 코인 모드
+        companionTimer?.invalidate(); companionTimer = nil
         if store.spinEnabled {
             if spinTimer == nil { advanceSpin() }
         } else {
@@ -72,6 +94,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             spinIndex = 0
             button.image = MenuBarCoin.staticImage(warning: store.isLimitWarning)
         }
+    }
+
+    /// UsageStore 값 → CompanionStore (XP 적립 + 표시 상태). 매 관찰 변경 시 호출.
+    private func updateCompanion() {
+        companion.update(
+            todayTokens: store.todayTotalTokens,
+            todayDate: CcusageProvider.todayKey(),
+            monthTotal: store.monthTotalTokens,
+            burnTier: store.spinTier,
+            limitWarning: store.isLimitWarning,
+            hasUsageData: store.hasUsageData)
+    }
+
+    private func renderCompanionFrame() {
+        statusItem.button?.image = CompanionRenderer.image(
+            size: 20, state: companion.displayState, level: companion.level,
+            time: Date().timeIntervalSinceReferenceDate)
     }
 
     /// 코인 스핀 — 프레임별 지속시간으로 이징 표현, 캐시된 NSImage 교체만 수행.

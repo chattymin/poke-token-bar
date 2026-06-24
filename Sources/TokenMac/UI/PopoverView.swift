@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PopoverView: View {
     @Environment(UsageStore.self) private var store
+    @Environment(CompanionStore.self) private var companion
     @State private var showSettings = false
 
     var body: some View {
@@ -20,6 +21,8 @@ struct PopoverView: View {
 
     private var mainContent: some View {
         VStack(alignment: .leading, spacing: 12) {
+            CompanionHeader(store: companion)
+            Divider()
             header
             Divider()
             if store.hasAnyLimits {

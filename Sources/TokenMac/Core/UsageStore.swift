@@ -52,6 +52,10 @@ final class UsageStore {
     var showLimitInMenu: Bool {
         didSet { UserDefaults.standard.set(showLimitInMenu, forKey: "showLimitInMenu") }
     }
+    /// 메뉴바 아이콘을 코인 대신 companion 캐릭터로 표시
+    var companionInMenuBar: Bool {
+        didSet { UserDefaults.standard.set(companionInMenuBar, forKey: "companionInMenuBar") }
+    }
     var disableKeychainAccess: Bool {
         didSet {
             KeychainAccessGate.isDisabled = disableKeychainAccess
@@ -72,6 +76,7 @@ final class UsageStore {
     private let limitsProvider = OAuthLimitsProvider()
     private let codexLimitsProvider = CodexRateLimitsProvider()
     private var timer: Timer?
+    private var emptyUsageRetryTask: Task<Void, Never>?
     /// 같은 한도 블록(resets_at 기준)에 대해 알림 1회만 발화
     private var notifiedKeys: Set<String> = []
 
@@ -86,6 +91,9 @@ final class UsageStore {
     var hasAnyLimits: Bool {
         limits != nil || codexLimits?.hasVisibleLimit == true
     }
+
+    /// 사용량 데이터(스냅샷)가 하나라도 있는가 — companion sleep 판정용
+    var hasUsageData: Bool { !snapshots.isEmpty }
 
     var menuTitle: String {
         guard lastUpdated != nil else { return "—" }
@@ -189,6 +197,7 @@ final class UsageStore {
         showTokensInMenu = d.object(forKey: "showTokensInMenu") as? Bool ?? true
         showCostInMenu = d.object(forKey: "showCostInMenu") as? Bool ?? false
         showLimitInMenu = d.object(forKey: "showLimitInMenu") as? Bool ?? false
+        companionInMenuBar = d.object(forKey: "companionInMenuBar") as? Bool ?? false
         disableKeychainAccess = d.object(forKey: "disableKeychainAccess") as? Bool ?? false
 
         reschedule()
@@ -224,7 +233,7 @@ final class UsageStore {
 
     // MARK: 갱신
 
-    func refresh() async {
+    func refresh(scheduleEmptyRetry: Bool = true) async {
         guard !isRefreshing else { return }
         isRefreshing = true
         // App Nap 방지 — 백그라운드 스로틀로 ccusage 가 타임아웃되는 것을 막는다 (시스템 슬립은 허용)
@@ -310,6 +319,7 @@ final class UsageStore {
         }
         writeParitySnapshot()
         AppLog.write("phase1 done total=\(todayTotalTokens) errors=\(errors.isEmpty ? "none" : errors.joined(separator: " | "))")
+        handleEmptyUsageRetry(schedule: scheduleEmptyRetry, hasErrors: !errors.isEmpty)
 
         // ── Phase 2: 블록/주월 누적 상세 (best effort) — 실패 시 이전 값 유지
         await withTaskGroup(of: (String, ProviderEnrichment).self) { group in
@@ -349,6 +359,20 @@ final class UsageStore {
         let summary = snapshots.map { "\($0.providerID):\($0.today?.date ?? "nil")=\($0.todayTotalTokens)" }
             .joined(separator: ", ")
         AppLog.write("refresh done [\(summary)]")
+    }
+
+    private func handleEmptyUsageRetry(schedule: Bool, hasErrors: Bool) {
+        emptyUsageRetryTask?.cancel()
+        emptyUsageRetryTask = nil
+        guard schedule, !hasErrors, snapshots.isEmpty else { return }
+
+        AppLog.write("empty usage retry scheduled")
+        emptyUsageRetryTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 20_000_000_000)
+            guard !Task.isCancelled else { return }
+            self?.emptyUsageRetryTask = nil
+            await self?.refresh(scheduleEmptyRetry: false)
+        }
     }
 
     func refreshLimitTokenFromKeychain() async {
