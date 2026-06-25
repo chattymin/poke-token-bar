@@ -3,6 +3,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(UsageStore.self) private var store
+    @Environment(CompanionStore.self) private var companion
     /// 팝오버 내부 화면 전환 방식 — sheet/dismiss 를 쓰지 않는다 (PopoverView 의 NOTE 참조)
     var onClose: () -> Void
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
@@ -17,6 +18,15 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("설정")
                 .font(.headline)
+
+            Picker("언어 / Language", selection: Binding(
+                get: { companion.language },
+                set: { companion.setLanguage($0) })) {
+                ForEach(AppLanguage.allCases, id: \.self) { lang in
+                    Text(lang.label).tag(lang)
+                }
+            }
+            .pickerStyle(.menu)
 
             Picker("새로고침 간격", selection: $store.refreshInterval) {
                 ForEach(UsageStore.intervalPresets, id: \.value) { preset in

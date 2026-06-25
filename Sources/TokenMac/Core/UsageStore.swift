@@ -197,7 +197,7 @@ final class UsageStore {
         showTokensInMenu = d.object(forKey: "showTokensInMenu") as? Bool ?? true
         showCostInMenu = d.object(forKey: "showCostInMenu") as? Bool ?? false
         showLimitInMenu = d.object(forKey: "showLimitInMenu") as? Bool ?? false
-        companionInMenuBar = d.object(forKey: "companionInMenuBar") as? Bool ?? false
+        companionInMenuBar = d.object(forKey: "companionInMenuBar") as? Bool ?? true
         disableKeychainAccess = d.object(forKey: "disableKeychainAccess") as? Bool ?? false
 
         reschedule()

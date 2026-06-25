@@ -15,6 +15,7 @@ struct PopoverView: View {
             if showSettings {
                 SettingsView(onClose: { showSettings = false })
                     .environment(store)
+                    .environment(companion)
             } else {
                 mainContent
             }

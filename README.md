@@ -81,4 +81,17 @@ open /Applications/TokenMac.app
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE). The MIT license covers this project's source code only.
+
+## Companion (Pokémon)
+
+The growth companion fetches Pokémon data and sprites at runtime from
+[PokéAPI](https://pokeapi.co/); no Pokémon assets or data are bundled in this
+repository or its releases. Cached files are stored only on the user's machine
+under `~/Library/Application Support/TokenMac/`.
+
+This is an unofficial, non-commercial fan project. It is **not affiliated with,
+endorsed, sponsored, or approved by Nintendo, Game Freak, or The Pokémon
+Company**. Pokémon and Pokémon character names are trademarks of Nintendo;
+Pokémon names, data, and sprites are © Nintendo / Game Freak / The Pokémon
+Company and are used at runtime for identification only.

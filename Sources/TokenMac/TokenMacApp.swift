@@ -22,6 +22,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var spinTimer: Timer?
     private var companion: CompanionStore!
     private var companionTimer: Timer?
+    private var menuSprite: NSImage?
+    private var menuSpriteID: Int?
+    private var companionBobUp = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -107,10 +110,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             hasUsageData: store.hasUsageData)
     }
 
+    /// 메뉴바: 현재 포켓몬 스프라이트 + 가벼운 상하 bob. 알/로딩 중엔 코인 폴백.
     private func renderCompanionFrame() {
-        statusItem.button?.image = CompanionRenderer.image(
-            size: 20, traits: companion.activeTraits, state: companion.displayState,
-            level: companion.level, time: Date().timeIntervalSinceReferenceDate)
+        let id = companion.currentSpeciesID
+        if id != menuSpriteID {
+            menuSpriteID = id
+            menuSprite = nil
+            if let id {
+                Task { @MainActor [weak self] in
+                    self?.menuSprite = await SpriteLoader.image(speciesID: id, animated: false)
+                }
+            }
+        }
+        companionBobUp.toggle()
+        if let sprite = menuSprite {
+            statusItem.button?.image = Self.menuBarImage(from: sprite, up: companionBobUp)
+        } else {
+            statusItem.button?.image = MenuBarCoin.staticImage(warning: store.isLimitWarning)
+        }
+    }
+
+    private static func menuBarImage(from sprite: NSImage, up: Bool) -> NSImage {
+        let h: CGFloat = 22
+        let img = NSImage(size: NSSize(width: h, height: h))
+        img.lockFocus()
+        let off: CGFloat = up ? 1 : 0
+        sprite.draw(in: NSRect(x: 1, y: off, width: h - 2, height: h - 2),
+                    from: .zero, operation: .sourceOver, fraction: 1)
+        img.unlockFocus()
+        return img
     }
 
     /// 코인 스핀 — 프레임별 지속시간으로 이징 표현, 캐시된 NSImage 교체만 수행.
