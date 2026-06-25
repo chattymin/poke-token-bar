@@ -40,8 +40,8 @@ enum PokemonBalance {
         switch rarity {
         case .common:    return    750_000_000
         case .uncommon:  return  1_875_000_000
-        case .rare:      return  3_750_000_000
-        case .legendary: return  9_000_000_000
+        case .rare:      return  3_000_000_000
+        case .legendary: return  6_000_000_000
         }
     }
     /// stageIndex(0-based)에서 다음 단계/졸업까지 필요한 토큰.
