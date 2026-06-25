@@ -72,6 +72,10 @@ final class UsageStore {
         ("수동", 0), ("1분", 60), ("2분", 120), ("5분", 300), ("15분", 900),
     ]
 
+    /// 앱 언어 미러(알림 현지화용). 단일 소스는 CompanionStore.language —
+    /// 설정 변경/기동 시 동기화한다.
+    var localizationLanguage: AppLanguage = .ko
+
     private let providers: [any UsageProvider]
     private let limitsProvider = OAuthLimitsProvider()
     private let codexLimitsProvider = CodexRateLimitsProvider()
@@ -415,17 +419,18 @@ final class UsageStore {
 
     private func checkLimitNotifications() {
         guard Bundle.main.bundleIdentifier != nil, Bundle.main.bundlePath.hasSuffix(".app") else { return }
+        let l = L(localizationLanguage)
         var windows: [(name: String, utilization: Double, resetKey: String)] = []
         if let limits {
             if let utilization = limits.fiveHour?.utilization {
                 windows.append((
-                    "Claude 5시간 세션",
+                    l.claudeFiveHour,
                     utilization,
                     limits.fiveHour?.resetsAt ?? "none"))
             }
             if let utilization = limits.sevenDay?.utilization {
                 windows.append((
-                    "Claude 주간",
+                    l.claudeWeekly,
                     utilization,
                     limits.sevenDay?.resetsAt ?? "none"))
             }
@@ -433,19 +438,19 @@ final class UsageStore {
         if let codex = codexLimits?.codex {
             if let primary = codex.primary {
                 windows.append((
-                    "Codex \(primary.displayName)",
+                    "Codex \(l.codexWindow(primary.windowDurationMins))",
                     Double(primary.usedPercent),
                     primary.resetsAt.map(String.init) ?? "none"))
             }
             if let secondary = codex.secondary {
                 windows.append((
-                    "Codex \(secondary.displayName)",
+                    "Codex \(l.codexWindow(secondary.windowDurationMins))",
                     Double(secondary.usedPercent),
                     secondary.resetsAt.map(String.init) ?? "none"))
             }
             if let individual = codex.individualLimit {
                 windows.append((
-                    "Codex 개인 한도",
+                    l.codexPersonalLimit,
                     Double(individual.usedPercent),
                     String(individual.resetsAt)))
             }
@@ -457,8 +462,8 @@ final class UsageStore {
                 guard !notifiedKeys.contains(key) else { break }
                 notifiedKeys.insert(key)
                 let content = UNMutableNotificationContent()
-                content.title = level == "critical" ? "한도 임박" : "한도 경고"
-                content.body = "\(name) 한도 \(TokenFormatter.percent(utilization)) 사용"
+                content.title = level == "critical" ? l.notifCritical : l.notifWarning
+                content.body = l.notifBody(name, TokenFormatter.percent(utilization))
                 content.sound = level == "critical" ? .default : nil
                 UNUserNotificationCenter.current().add(
                     UNNotificationRequest(identifier: key, content: content, trigger: nil))

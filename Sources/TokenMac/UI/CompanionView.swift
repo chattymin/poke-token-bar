@@ -92,12 +92,12 @@ struct CompanionHeader: View {
                         Text(store.stageText).font(.caption2).foregroundStyle(.secondary)
                         ProgressView(value: store.progress).controlSize(.small).tint(.orange)
                         if store.tokensToNext > 0 {
-                            Text((store.isFinalStage ? "졸업까지 " : "다음 진화까지 ")
-                                 + TokenFormatter.compact(store.tokensToNext))
+                            let amount = TokenFormatter.compact(store.tokensToNext)
+                            Text(store.isFinalStage ? store.l.toGraduation(amount) : store.l.toNextEvolution(amount))
                                 .font(.caption2).foregroundStyle(.tertiary)
                         }
                     } else {
-                        Text("설치 후 첫 토큰을 기다리는 중…").font(.caption2).foregroundStyle(.secondary)
+                        Text(store.l.waitingFirstToken).font(.caption2).foregroundStyle(.secondary)
                     }
                     Text(statusLine).font(.caption2).foregroundStyle(.secondary)
                 }
@@ -107,21 +107,22 @@ struct CompanionHeader: View {
                 EvoLineView(nodes: store.lineNodes)
             }
             if let g = store.justGraduated {
-                Text("\(g) 졸업 → 도감에 보존. 새 Token Egg가 도착했어요!")
+                Text(store.l.graduated(g))
                     .font(.caption2).foregroundStyle(.orange)
             }
         }
     }
 
     private var statusLine: String {
+        let l = store.l
         switch store.displayState {
-        case .egg:     return "곧 깨어나요."
-        case .idle:    return "오늘은 조용히 자리를 지켜요."
-        case .working: return "오늘의 작업 흔적이 쌓이고 있어요."
-        case .focus:   return "지금은 집중 모드예요."
-        case .tired:   return "한도에 가까워요. 잠깐 쉬어도 괜찮아요."
-        case .sleep:   return "지금은 자고 있어요."
-        case .levelUp: return store.justEvolvedTo.map { "\($0)(으)로 진화했어요!" } ?? "성장했어요!"
+        case .egg:     return l.statusEgg
+        case .idle:    return l.statusIdle
+        case .working: return l.statusWorking
+        case .focus:   return l.statusFocus
+        case .tired:   return l.statusTired
+        case .sleep:   return l.statusSleep
+        case .levelUp: return store.justEvolvedTo.map { l.statusEvolved($0) } ?? l.statusGrew
         }
     }
 }
@@ -132,7 +133,7 @@ struct CollectionView: View {
     var body: some View {
         ScrollView {
             if store.dexEntries.isEmpty {
-                Text("아직 졸업한 포켓몬이 없어요. 최종 진화까지 키워보세요.")
+                Text(store.l.dexEmpty)
                     .font(.caption).foregroundStyle(.tertiary)
                     .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8)
             } else {
@@ -146,7 +147,7 @@ struct CollectionView: View {
                                     .background(rarityColor(entry.rarity)).foregroundStyle(.white)
                                     .clipShape(Capsule())
                                 Spacer()
-                                Text("\(entry.chainOrder.count)단계 · 완성").font(.system(size: 9)).foregroundStyle(.secondary)
+                                Text(store.l.formsComplete(entry.chainOrder.count)).font(.system(size: 9)).foregroundStyle(.secondary)
                             }
                             EvoLineView(nodes: entry.chainOrder.map { ($0, "done") }, thumb: 38)
                         }

@@ -42,6 +42,8 @@ final class CompanionStore {
 
     var language: AppLanguage { state.language }
     func setLanguage(_ lang: AppLanguage) { state.language = lang; save() }
+    /// 앱 전체 UI 문자열 — language 변경 시 자동 재렌더.
+    var l: L { L(language) }
 
     var hasActive: Bool { state.active != nil }
     var rarity: Rarity? { state.active?.rarity }
@@ -57,7 +59,7 @@ final class CompanionStore {
     }
     var stageText: String {
         guard let a = state.active else { return "" }
-        return isFinalStage ? "최종 진화체" : "진화 단계 \(a.stageIndex + 1) / \(a.totalForms)"
+        return isFinalStage ? l.finalForm : l.stage(a.stageIndex + 1, a.totalForms)
     }
     var threshold: Int {
         guard let a = state.active else { return 1 }
