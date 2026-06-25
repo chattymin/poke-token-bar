@@ -88,7 +88,7 @@ final class CompanionStore {
     // MARK: 갱신 (AppDelegate 가 UsageStore 값으로 호출)
 
     func update(todayTokens: Int, todayDate: String, monthTotal: Int,
-                burnTier: SpinTier, limitWarning: Bool, hasUsageData: Bool) {
+                burnTier: BurnTier, limitWarning: Bool, hasUsageData: Bool) {
         justEvolvedTo = nil
         if !state.installBaselineSet {
             // 설치 기준선 — 실제 데이터가 도착한 시점의 today 를 baseline 으로(이전 사용량 미카운트).
@@ -198,7 +198,7 @@ final class CompanionStore {
         return pool[Int(rng.next() % UInt64(pool.count))]
     }
 
-    private func computeState(burnTier: SpinTier, limitWarning: Bool, hasUsageData: Bool, today: Int) -> CompanionStateKind {
+    private func computeState(burnTier: BurnTier, limitWarning: Bool, hasUsageData: Bool, today: Int) -> CompanionStateKind {
         if state.active == nil { return .egg }
         if justGraduated != nil || (eventUntil != nil && clock() < eventUntil!) { return .levelUp }
         if limitWarning { return .tired }

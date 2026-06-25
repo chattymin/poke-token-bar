@@ -3,8 +3,8 @@ import Foundation
 import Observation
 import UserNotifications
 
-/// 메뉴바 코인 회전 속도 단계 — burn rate 기반 (UI 가 프레임 시퀀스로 해석)
-enum SpinTier: Sendable {
+/// burn rate 단계 — companion 표시 상태(작업/집중) 판정에 사용.
+enum BurnTier: Sendable {
     case idle, normal, fast, blazing
 }
 
@@ -38,10 +38,6 @@ final class UsageStore {
     var critThreshold: Double {
         didSet { UserDefaults.standard.set(critThreshold, forKey: "critThreshold") }
     }
-    /// 메뉴바 코인 스핀 애니메이션
-    var spinEnabled: Bool {
-        didSet { UserDefaults.standard.set(spinEnabled, forKey: "spinEnabled") }
-    }
     // 메뉴바 표시 항목 (복수 선택 가능)
     var showTokensInMenu: Bool {
         didSet { UserDefaults.standard.set(showTokensInMenu, forKey: "showTokensInMenu") }
@@ -51,10 +47,6 @@ final class UsageStore {
     }
     var showLimitInMenu: Bool {
         didSet { UserDefaults.standard.set(showLimitInMenu, forKey: "showLimitInMenu") }
-    }
-    /// 메뉴바 아이콘을 코인 대신 companion 캐릭터로 표시
-    var companionInMenuBar: Bool {
-        didSet { UserDefaults.standard.set(companionInMenuBar, forKey: "companionInMenuBar") }
     }
     var disableKeychainAccess: Bool {
         didSet {
@@ -174,9 +166,8 @@ final class UsageStore {
         return false
     }
 
-    /// 코인 스핀 속도 티어 — burn rate 가 높을수록 빨리 돈다.
-    /// 티어가 회전 속도와 프레임 시퀀스를 함께 결정해 초당 이미지 교체를 ~5회로 상한 (CPU 보호)
-    var spinTier: SpinTier {
+    /// burn rate 티어 — companion 표시 상태(idle/working/focus) 판정에 사용.
+    var burnTier: BurnTier {
         guard let burn = claudeActiveBlock?.tokensPerMinute, burn > 1_000 else { return .idle }
         if burn < 100_000 { return .normal }
         if burn < 400_000 { return .fast }
@@ -197,11 +188,9 @@ final class UsageStore {
         refreshInterval = d.object(forKey: "refreshInterval") as? TimeInterval ?? 120
         warnThreshold = d.object(forKey: "warnThreshold") as? Double ?? 80
         critThreshold = d.object(forKey: "critThreshold") as? Double ?? 95
-        spinEnabled = d.object(forKey: "spinEnabled") as? Bool ?? true
         showTokensInMenu = d.object(forKey: "showTokensInMenu") as? Bool ?? true
         showCostInMenu = d.object(forKey: "showCostInMenu") as? Bool ?? false
         showLimitInMenu = d.object(forKey: "showLimitInMenu") as? Bool ?? false
-        companionInMenuBar = d.object(forKey: "companionInMenuBar") as? Bool ?? true
         disableKeychainAccess = d.object(forKey: "disableKeychainAccess") as? Bool ?? false
 
         reschedule()
