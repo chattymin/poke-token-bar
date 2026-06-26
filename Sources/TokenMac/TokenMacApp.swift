@@ -18,10 +18,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let popover = NSPopover()
     private var store: UsageStore!
     private var companion: CompanionStore!
-    private var companionTimer: Timer?
-    private var menuSprite: NSImage?
+
+    // 메뉴바 캐릭터 애니메이션 — 단일 타이머로 프레임 순환.
+    // 프레임 = 이미 22px 로 합성된 이미지 + delay. egg/static 은 2프레임 bob, animated 는 GIF 실제 프레임.
     private var menuSpriteID: Int?
-    private var companionBobUp = false
+    private var menuFrames: [(image: NSImage, delay: TimeInterval)] = []
+    private var menuIndex = 0
+    private var menuTimer: Timer?
+    private var menuLoadGen = 0     // async 로드 경합 방지
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -67,16 +71,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         button.appearsDisabled = store.isStale
 
         updateCompanion()
-
-        // 메뉴바는 항상 캐릭터(스프라이트/알) — 프레임 타이머로 가벼운 bob 애니메이션.
-        if companionTimer == nil {
-            renderCompanionFrame()
-            let t = Timer(timeInterval: 1.0 / 8.0, repeats: true) { [weak self] _ in
-                Task { @MainActor in self?.renderCompanionFrame() }
-            }
-            RunLoop.main.add(t, forMode: .common)
-            companionTimer = t
-        }
+        ensureMenuAnimation()
     }
 
     /// UsageStore 값 → CompanionStore (사용량 적립 + 표시 상태). 매 관찰 변경 시 호출.
@@ -90,30 +85,84 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             hasUsageData: store.hasUsageData)
     }
 
-    /// 메뉴바: 현재 포켓몬 스프라이트 + 가벼운 상하 bob. 알/로딩 중엔 알 글리프 폴백.
-    private func renderCompanionFrame() {
+    // MARK: 메뉴바 애니메이션
+
+    /// 현재 포켓몬에 맞춰 메뉴바 프레임을 준비. 종이 바뀐 경우에만 재로딩.
+    /// 즉시(캐시/알)로 먼저 보여주고, animated GIF 가 받아지면 교체.
+    private func ensureMenuAnimation() {
         let id = companion.currentSpeciesID
-        if id != menuSpriteID {
-            menuSpriteID = id
-            menuSprite = nil
-            if let id {
-                Task { @MainActor [weak self] in
-                    self?.menuSprite = await SpriteLoader.image(speciesID: id, animated: false)
+        if id == menuSpriteID, !menuFrames.isEmpty { return }   // 이미 이 종으로 애니메이션 중
+        menuSpriteID = id
+        menuLoadGen += 1
+        let gen = menuLoadGen
+
+        guard let id else {                  // 알: 즉시 2프레임 bob
+            setMenuFrames(Self.eggFrames())
+            return
+        }
+        // 캐시된 정적 스프라이트가 있으면 즉시 표시(없으면 알 placeholder)
+        if let cached = SpriteLoader.cachedImage(speciesID: id) {
+            setMenuFrames(Self.bobFrames(from: cached))
+        } else {
+            setMenuFrames(Self.eggFrames())
+        }
+        // animated GIF 우선 시도 → 실패 시 정적 스프라이트
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            if let data = await SpriteStore.shared.data(speciesID: id, animated: true) {
+                let raw = GIFDecoder.frames(from: data)
+                if raw.count > 1 {
+                    guard gen == self.menuLoadGen else { return }
+                    self.setMenuFrames(raw.map { (Self.menuBarImage(from: $0.image, up: false), $0.delay) })
+                    return
                 }
             }
+            if let sprite = await SpriteLoader.image(speciesID: id) {
+                guard gen == self.menuLoadGen else { return }
+                self.setMenuFrames(Self.bobFrames(from: sprite))
+            }
         }
-        companionBobUp.toggle()
-        if let sprite = menuSprite {
-            statusItem.button?.image = Self.menuBarImage(from: sprite, up: companionBobUp)
-        } else {
-            statusItem.button?.image = Self.eggImage(up: companionBobUp)
+    }
+
+    private func setMenuFrames(_ frames: [(image: NSImage, delay: TimeInterval)]) {
+        menuFrames = frames
+        menuIndex = 0
+        advanceMenu()
+    }
+
+    /// 현재 프레임을 메뉴바에 올리고, 그 프레임의 delay 후 다음 프레임 예약(자기 재예약).
+    private func advanceMenu() {
+        menuTimer?.invalidate()
+        guard !menuFrames.isEmpty else { return }
+        let frame = menuFrames[menuIndex % menuFrames.count]
+        statusItem.button?.image = frame.image
+        guard menuFrames.count > 1 else { return }   // 단일 프레임이면 정지
+        menuTimer = Timer.scheduledTimer(withTimeInterval: frame.delay, repeats: false) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                self.menuIndex = (self.menuIndex + 1) % self.menuFrames.count
+                self.advanceMenu()
+            }
         }
+    }
+
+    // MARK: 프레임 합성 (22px)
+
+    /// 스프라이트 정적 + 가벼운 상하 bob 2프레임 (animated 미지원/로딩 폴백).
+    private static func bobFrames(from sprite: NSImage) -> [(image: NSImage, delay: TimeInterval)] {
+        [(menuBarImage(from: sprite, up: false), 0.5), (menuBarImage(from: sprite, up: true), 0.5)]
+    }
+
+    /// 부화 전/로딩 중 알 글리프 2프레임 bob.
+    private static func eggFrames() -> [(image: NSImage, delay: TimeInterval)] {
+        [(eggImage(up: false), 0.5), (eggImage(up: true), 0.5)]
     }
 
     private static func menuBarImage(from sprite: NSImage, up: Bool) -> NSImage {
         let h: CGFloat = 22
         let img = NSImage(size: NSSize(width: h, height: h))
         img.lockFocus()
+        NSGraphicsContext.current?.imageInterpolation = .none
         let off: CGFloat = up ? 1 : 0
         sprite.draw(in: NSRect(x: 1, y: off, width: h - 2, height: h - 2),
                     from: .zero, operation: .sourceOver, fraction: 1)
