@@ -1,88 +1,72 @@
-// 도트(픽셀 아트) 앱 아이콘 생성기
-// 사용: swift scripts/generate-icon.swift <출력.png>
-// 16x16 픽셀 그리드 — 다크 배경 + 상승 바 차트 3개 + 골드 토큰 코인
+// PokeTokenBar 앱 아이콘 생성기 — Ultra-T (포켓볼 + 상단 토큰 T + 레드 스퀘어클)
+// 사용: swift scripts/generate-icon.swift <출력.png> [size=1024]
+// 좌표는 SVG 시안(viewBox 100x100, 위가 원점)을 기준으로 정의하고 NSImage(아래가 원점)로 변환한다.
 import AppKit
 
 let args = CommandLine.arguments
 let outPath = args.count > 1 ? args[1] : "build/icon_1024.png"
+let size = args.count > 2 ? (Int(args[2]) ?? 1024) : 1024
 
-// 팔레트
-let BG = NSColor(srgbRed: 0.133, green: 0.169, blue: 0.271, alpha: 1)      // #222B45
-let BG2 = NSColor(srgbRed: 0.157, green: 0.196, blue: 0.314, alpha: 1)     // #283250 (디더링 톤)
-let BASE = NSColor(srgbRed: 0.227, green: 0.271, blue: 0.400, alpha: 1)    // #3A4566 베이스라인
-let G1 = NSColor(srgbRed: 0.180, green: 0.769, blue: 0.651, alpha: 1)      // #2EC4A6 green bar
-let G2 = NSColor(srgbRed: 0.361, green: 0.910, blue: 0.784, alpha: 1)      // top shine
-let A1 = NSColor(srgbRed: 1.000, green: 0.714, blue: 0.153, alpha: 1)      // #FFB627 amber bar
-let A2 = NSColor(srgbRed: 1.000, green: 0.851, blue: 0.490, alpha: 1)
-let P1 = NSColor(srgbRed: 0.937, green: 0.365, blue: 0.498, alpha: 1)      // #EF5D7F pink bar
-let P2 = NSColor(srgbRed: 1.000, green: 0.561, blue: 0.659, alpha: 1)
-let C1 = NSColor(srgbRed: 0.965, green: 0.769, blue: 0.325, alpha: 1)      // #F6C453 coin
-let C2 = NSColor(srgbRed: 0.992, green: 0.918, blue: 0.659, alpha: 1)      // coin highlight
-let C3 = NSColor(srgbRed: 0.788, green: 0.569, blue: 0.180, alpha: 1)      // coin shadow
+let S = CGFloat(size)
+let f = S / 100.0   // SVG 단위 → 픽셀
 
-// 16x16 그리드 (row 0 = 위). 문자 → 색상
-// . = 배경, : = 배경 디더링, _ = 베이스라인
-// g/G = green bar(밝음/기본), a/A = amber, p/P = pink
-// c = coin, h = coin highlight, s = coin shadow
-// 레트로 게임풍 골드 코인 (12x12 픽셀 서클, cols 2-13 / rows 2-13)
-// o=외곽선, L=림 하이라이트, C=골드 베이스, D=음영, 슬롯=L+DD 세로 바
-let grid: [String] = [
-    "................",
-    "................",
-    "......oooo......",
-    "....ooLLLLoo....",
-    "...oLLLLLLLLo...",
-    "...oCCCCCCCCo...",
-    "..oCCDDDDDDCCo..",
-    "..oCCCCDDCCCCo..",
-    "..oCCCCDDCCCCo..",
-    "..oCCCCDDCCCCo..",
-    "...oCCCDDCCCo...",
-    "...oCCCCCCCCo...",
-    "....ooDDDDoo....",
-    "......oooo......",
-    "................",
-    "................",
-]
-
-let OUT = NSColor(srgbRed: 0.357, green: 0.239, blue: 0.078, alpha: 1)     // #5B3D14 코인 외곽선
-
-func color(for ch: Character, col: Int, row: Int) -> NSColor? {
-    switch ch {
-    case ".": return (col + row) % 5 == 0 ? BG2 : nil   // 미세 디더링
-    case "o": return OUT
-    case "C": return C1
-    case "L": return C2
-    case "D": return C3
-    default: return nil
-    }
+// SVG(top-down) 좌표 → NSImage(bottom-up) 변환
+func P(_ x: CGFloat, _ y: CGFloat) -> NSPoint { NSPoint(x: x * f, y: S - y * f) }
+func R(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> NSRect {
+    NSRect(x: x * f, y: S - (y + h) * f, width: w * f, height: h * f)
+}
+func col(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat) -> NSColor {
+    NSColor(srgbRed: r/255, green: g/255, blue: b/255, alpha: 1)
 }
 
-let size = 1024
-let margin = 64               // macOS 아이콘 여백 관례
-let rectSize = size - margin * 2   // 896
-let corner = 200.0
-let cell = CGFloat(rectSize) / 16.0  // 56
+// 팔레트 (시안 #1 Ultra-T)
+let bgTop = col(226, 59, 59)     // #e23b3b
+let bgBot = col(140, 15, 18)     // #8c0f12
+let red   = col(238, 21, 21)     // #ee1515
+let white = col(243, 244, 246)   // #f3f4f6
+let black = col(22, 24, 29)      // #16181d
 
 let image = NSImage(size: NSSize(width: size, height: size))
 image.lockFocus()
+let ctx = NSGraphicsContext.current
+ctx?.imageInterpolation = .high
+ctx?.shouldAntialias = true
 
-let iconRect = NSRect(x: margin, y: margin, width: rectSize, height: rectSize)
-let path = NSBezierPath(roundedRect: iconRect, xRadius: corner, yRadius: corner)
-BG.setFill()
-path.fill()
-path.addClip()
+// 1) 스퀘어클 배경 + 세로 그라디언트 (위=밝은 레드, 아래=어두운 레드)
+let bgRect = R(3, 3, 94, 94)
+let bgPath = NSBezierPath(roundedRect: bgRect, xRadius: 22 * f, yRadius: 22 * f)
+NSGradient(starting: bgTop, ending: bgBot)?.draw(in: bgPath, angle: 270)
 
-for (row, line) in grid.enumerated() {
-    for (col, ch) in line.enumerated() {
-        guard col < 16, let c = color(for: ch, col: col, row: row) else { continue }
-        c.setFill()
-        // NSImage 좌표계는 아래가 원점 → row 반전
-        let x = CGFloat(margin) + CGFloat(col) * cell
-        let y = CGFloat(margin) + CGFloat(15 - row) * cell
-        NSRect(x: x, y: y, width: cell, height: cell).fill()
-    }
-}
+// 2) 포켓볼 — 중심 (50,52), 반지름 30
+let cx: CGFloat = 50, cy: CGFloat = 52, rr: CGFloat = 30
+let ballRect = R(cx - rr, cy - rr, rr * 2, rr * 2)
+let ballPath = NSBezierPath(ovalIn: ballRect)
+
+NSGraphicsContext.saveGraphicsState()
+ballPath.addClip()
+// 하단(화이트) 전체 → 상단 레드 → 밴드(블랙)
+white.setFill(); ballRect.fill()
+red.setFill();   R(0, 0, 100, 47).fill()          // 상단 절반(밴드 위)
+black.setFill(); R(0, 47, 100, 10).fill()         // 가로 밴드
+// 상단 토큰 T (화이트, Ultra Ball H 위치)
+white.setFill()
+NSBezierPath(roundedRect: R(39, 31, 22, 5.4), xRadius: 1.2 * f, yRadius: 1.2 * f).fill()   // 가로획
+NSBezierPath(roundedRect: R(47.3, 31, 5.4, 15), xRadius: 1.2 * f, yRadius: 1.2 * f).fill() // 세로획
+NSGraphicsContext.restoreGraphicsState()
+
+// 3) 외곽 링
+black.setStroke()
+let ring = NSBezierPath(ovalIn: ballRect.insetBy(dx: 1.4 * f, dy: 1.4 * f))
+ring.lineWidth = 2.8 * f
+ring.stroke()
+
+// 4) 중앙 버튼 (블랙 링 + 화이트)
+black.setFill(); NSBezierPath(ovalIn: R(cx - 9.2, cy - 9.2, 18.4, 18.4)).fill()
+white.setFill(); NSBezierPath(ovalIn: R(cx - 5.3, cy - 5.3, 10.6, 10.6)).fill()
+black.setStroke()
+let btnRing = NSBezierPath(ovalIn: R(cx - 5.3, cy - 5.3, 10.6, 10.6))
+btnRing.lineWidth = 0.8 * f
+btnRing.stroke()
 
 image.unlockFocus()
 
@@ -97,7 +81,7 @@ try? FileManager.default.createDirectory(
     withIntermediateDirectories: true)
 do {
     try png.write(to: URL(fileURLWithPath: outPath))
-    print("saved: \(outPath)")
+    print("saved: \(outPath) (\(size)px)")
 } catch {
     FileHandle.standardError.write("쓰기 실패: \(error)\n".data(using: .utf8)!)
     exit(1)
