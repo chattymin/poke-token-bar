@@ -129,6 +129,27 @@ struct L {
     func statusEvolved(_ name: String) -> String { t("\(name)(으)로 진화했어요!", "Evolved into \(name)!", "\(name) に進化しました！") }
     var statusGrew: String { t("성장했어요!", "It grew!", "成長しました！") }
 
+    // MARK: Claude 한도 토큰 갱신 오류 (친절 안내)
+    func limitRefreshHTTPError(_ status: Int) -> String {
+        if status == 401 || status == 403 {
+            return t(
+                "Claude 자격증명이 만료됐거나 권한이 없어요 (\(status)). Claude Code 로그인을 확인하세요. Codex만 쓴다면 무시해도 됩니다 — Codex 한도는 따로 표시돼요.",
+                "Claude credential is expired or unauthorized (\(status)). Check that you're signed in to Claude Code. If you only use Codex you can ignore this — Codex limits show separately.",
+                "Claude の認証情報が期限切れか権限がありません (\(status))。Claude Code にサインインしているか確認してください。Codex のみ使用する場合は無視できます — Codex の上限は別に表示されます。")
+        }
+        return t("Claude 한도 조회 실패 (\(status)).", "Failed to fetch Claude limits (\(status)).", "Claude の上限取得に失敗しました (\(status))。")
+    }
+    var limitRefreshNoCredential: String {
+        t("Claude 자격증명을 찾지 못했어요. Claude Code 에 로그인하면 한도가 표시됩니다. Codex만 쓴다면 무시해도 돼요.",
+          "No Claude credential found. Sign in to Claude Code to see limits. If you only use Codex you can ignore this.",
+          "Claude の認証情報が見つかりません。Claude Code にサインインすると上限が表示されます。Codex のみなら無視して構いません。")
+    }
+    var limitRefreshGeneric: String {
+        t("Claude 한도 조회에 실패했어요. 잠시 후 다시 시도하세요.",
+          "Couldn't fetch Claude limits. Please try again shortly.",
+          "Claude の上限取得に失敗しました。しばらくして再試行してください。")
+    }
+
     // MARK: 알림
     var notifCritical: String { t("한도 임박", "Limit imminent", "上限切迫") }
     var notifWarning: String { t("한도 경고", "Limit warning", "上限警告") }
