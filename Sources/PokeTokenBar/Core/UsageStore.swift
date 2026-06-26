@@ -380,9 +380,23 @@ final class UsageStore {
             AppLog.write("limits refreshed by user action fiveHour=\(limits?.fiveHour?.utilization?.description ?? "nil") sevenDay=\(limits?.sevenDay?.utilization?.description ?? "nil")")
             AppLog.write("limits refreshed from keychain by user action")
         } catch {
-            limitTokenRefreshError = "\(error)"
+            limitTokenRefreshError = Self.friendlyLimitError(error, L(localizationLanguage))
             if limits == nil { limitsAvailable = false }
             AppLog.write("limits user refresh failed: \(error)")
+        }
+    }
+
+    /// 한도 갱신 실패를 사용자 친화 메시지로 변환. Codex만 쓰는 사용자는 401 이 정상이라,
+    /// raw "httpStatus(401)" 대신 "무시해도 된다"는 안내를 보여준다.
+    private static func friendlyLimitError(_ error: any Error, _ l: L) -> String {
+        guard let limitsError = error as? LimitsError else { return l.limitRefreshGeneric }
+        switch limitsError {
+        case .httpStatus(let status):
+            return l.limitRefreshHTTPError(status)
+        case .keychainUnavailable, .credentialFormat:
+            return l.limitRefreshNoCredential
+        case .keychainInteractionNotAllowed, .keychainAccessDisabled:
+            return l.limitRefreshGeneric
         }
     }
 
