@@ -10,34 +10,68 @@ func rarityColor(_ r: Rarity?) -> Color {
 }
 
 /// 스프라이트 1개(런타임 로드 + 캐시). 없으면 알 글리프. bob 으로 가벼운 상하 움직임.
+/// animated=true 면 Gen-V GIF 프레임을 순환(미지원/오프라인이면 정적+bob 으로 폴백).
 struct SpriteView: View {
     let speciesID: Int?
     var size: CGFloat = 84
     var bob: Bool = false
+    var animated: Bool = false
     @State private var img: NSImage?
     @State private var up = false
+    @State private var loadedID: Int?   // img 가 어느 speciesID 것인지(id 변경 시 갱신 판단)
+    @State private var frames: [(image: NSImage, delay: TimeInterval)] = []
+    @State private var frameIndex = 0
 
-    init(speciesID: Int?, size: CGFloat = 84, bob: Bool = false) {
+    init(speciesID: Int?, size: CGFloat = 84, bob: Bool = false, animated: Bool = false) {
         self.speciesID = speciesID
         self.size = size
         self.bob = bob
+        self.animated = animated
         // 캐시에 있으면 즉시(동기) 표시 — 재렌더 플래시 방지 + 정적 스냅샷에서도 보임
-        _img = State(initialValue: speciesID.flatMap { SpriteLoader.cachedImage(speciesID: $0) })
+        let cached = speciesID.flatMap { SpriteLoader.cachedImage(speciesID: $0) }
+        _img = State(initialValue: cached)
+        _loadedID = State(initialValue: cached != nil ? speciesID : nil)
     }
 
     var body: some View {
         Group {
-            if let img {
+            if !frames.isEmpty {
+                // GIF 애니메이션 경로 — 현재 프레임만 렌더
+                Image(nsImage: frames[frameIndex % frames.count].image)
+                    .resizable().interpolation(.none)
+                    .frame(width: size, height: size)
+            } else if let img {
                 Image(nsImage: img).resizable().interpolation(.none)
                     .frame(width: size, height: size)
             } else {
                 Text("🥚").font(.system(size: size * 0.62)).frame(width: size, height: size)
             }
         }
-        .offset(y: bob && up ? -3 : 0)
+        // GIF 재생 중엔 bob 정지(프레임 자체가 움직임) — 폴백/정적일 때만 상하 움직임
+        .offset(y: bob && frames.isEmpty && up ? -3 : 0)
         .task(id: speciesID) {
-            guard let id = speciesID else { img = nil; return }
-            img = await SpriteLoader.image(speciesID: id, animated: false)
+            // animated 프레임은 id 변경 시 항상 초기화(이전 종 프레임 잔상 방지)
+            frames = []
+            frameIndex = 0
+            guard let id = speciesID else { img = nil; loadedID = nil; return }
+            // 정적 스프라이트 먼저(즉시 표시 + 폴백 보장). 캐시 시드로 이미 같은 id 면 재요청 생략(플래시 방지)
+            if loadedID != id {
+                img = await SpriteLoader.image(speciesID: id, animated: false)
+                loadedID = id
+            }
+            guard animated else { return }
+            // animated GIF 시도 → 프레임 2개 이상이면 순환 루프, 아니면 정적 유지
+            guard let data = await SpriteStore.shared.data(speciesID: id, animated: true) else { return }
+            let raw = GIFDecoder.frames(from: data)
+            guard raw.count > 1 else { return }   // 단일 프레임/디코드 실패 → 정적 폴백
+            frames = raw
+            // delay 기반 프레임 advance. .task 취소 시(speciesID 변경/뷰 소멸) 루프 종료 — 누수 없음
+            while !Task.isCancelled {
+                let delay = frames[frameIndex % frames.count].delay
+                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                if Task.isCancelled { break }
+                frameIndex = (frameIndex + 1) % frames.count
+            }
         }
         .onAppear {
             guard bob else { return }
@@ -74,7 +108,7 @@ struct CompanionHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .center, spacing: 12) {
-                SpriteView(speciesID: store.currentSpeciesID, size: 76, bob: true)
+                SpriteView(speciesID: store.currentSpeciesID, size: 76, bob: true, animated: true)
                     .frame(width: 76, height: 76)
                     .background(Color.secondary.opacity(0.06))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
