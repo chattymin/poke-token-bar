@@ -127,6 +127,44 @@ struct CompanionHeader: View {
     }
 }
 
+/// 희귀도 1종 요약 캡슐 — 색 점 + 라벨 + 개수. 0이면 흐리게.
+struct RarityTally: View {
+    let label: String
+    let count: Int
+    let color: Color
+    var body: some View {
+        HStack(spacing: 3) {
+            Circle().fill(color).frame(width: 6, height: 6)
+            Text(label).font(.system(size: 9, weight: .medium))
+            Text("\(count)").font(.system(size: 9, weight: .bold))
+        }
+        .padding(.horizontal, 6).padding(.vertical, 2)
+        .background(color.opacity(0.12))
+        .clipShape(Capsule())
+        .opacity(count == 0 ? 0.4 : 1)
+    }
+}
+
+/// 도감 요약 헤더 — 총 개수 + 희귀도별 개수 캡슐.
+struct DexSummaryHeader: View {
+    let store: CompanionStore
+    private let order: [Rarity] = [.legendary, .rare, .uncommon, .common]
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 6) {
+                Text(store.l.dexTitle).font(.callout.weight(.semibold))
+                Text(store.l.dexTotal(store.dexEntries.count))
+                    .font(.caption2).foregroundStyle(.secondary)
+            }
+            HStack(spacing: 4) {
+                ForEach(order, id: \.self) { r in
+                    RarityTally(label: store.l.rarityLabel(r), count: store.dexCount(r), color: rarityColor(r))
+                }
+            }
+        }
+    }
+}
+
 /// 도감 — 잡은 라인(초기→최종 전부) 목록.
 struct CollectionView: View {
     let store: CompanionStore
@@ -138,7 +176,8 @@ struct CollectionView: View {
                     .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8)
             } else {
                 VStack(alignment: .leading, spacing: 8) {
-                    ForEach(store.dexEntries) { entry in
+                    DexSummaryHeader(store: store)
+                    ForEach(store.dexEntriesSorted) { entry in
                         VStack(alignment: .leading, spacing: 3) {
                             HStack {
                                 Text(entry.rarity.rawValue.uppercased())
@@ -150,6 +189,9 @@ struct CollectionView: View {
                                 Text(store.l.formsComplete(entry.chainOrder.count)).font(.system(size: 9)).foregroundStyle(.secondary)
                             }
                             EvoLineView(nodes: entry.chainOrder.map { ($0, "done") }, thumb: 38)
+                            if let caughtAt = entry.caughtAt {
+                                Text(caughtAt, style: .relative).font(.system(size: 9)).foregroundStyle(.tertiary)
+                            }
                         }
                         .padding(8)
                         .background(Color.secondary.opacity(0.06))

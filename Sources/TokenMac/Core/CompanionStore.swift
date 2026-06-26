@@ -85,6 +85,19 @@ final class CompanionStore {
     }
     var dexEntries: [DexEntry] { state.dex }
 
+    /// 도감 표시 순서 — 희귀도 내림차순(legendary→common), 동급은 잡은 시각 최신순.
+    var dexEntriesSorted: [DexEntry] {
+        state.dex.sorted { a, b in
+            if a.rarity.sortRank != b.rarity.sortRank { return a.rarity.sortRank > b.rarity.sortRank }
+            let ta = a.caughtAt ?? .distantPast
+            let tb = b.caughtAt ?? .distantPast
+            return ta > tb
+        }
+    }
+
+    /// 희귀도별 도감 개수(요약 헤더용).
+    func dexCount(_ rarity: Rarity) -> Int { state.dex.lazy.filter { $0.rarity == rarity }.count }
+
     // MARK: 갱신 (AppDelegate 가 UsageStore 값으로 호출)
 
     func update(todayTokens: Int, todayDate: String, monthTotal: Int,

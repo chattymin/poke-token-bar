@@ -195,3 +195,63 @@ final class CompanionStoreTests: XCTestCase {
         s.setLanguage(.ja); XCTAssertEqual(s.displayName, "ポ1")
     }
 }
+
+// MARK: 도감 정렬 / 요약
+
+@MainActor
+final class DexSortingTests: XCTestCase {
+    func testSortRankOrdersRarityAscendingByValue() {
+        XCTAssertLessThan(Rarity.common.sortRank, Rarity.uncommon.sortRank)
+        XCTAssertLessThan(Rarity.uncommon.sortRank, Rarity.rare.sortRank)
+        XCTAssertLessThan(Rarity.rare.sortRank, Rarity.legendary.sortRank)
+    }
+
+    func testDexEntriesSortedLegendaryFirstThenRecency() async {
+        // common 라인 2개(시각 다름) + legendary 라인 1개를 같은 store 에 졸업시킨다.
+        // StubProvider 는 라인 1개만 주므로, 라인별로 store 를 분리하지 않고
+        // 직접 졸업 흐름을 재현: 무진화(단일 임계) 라인을 hatch→applyUsage 로 졸업.
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("poke-\(UUID().uuidString).json")
+        var tick = 0
+        // 라인을 바꿔가며 졸업시키기 위해 가변 provider 사용.
+        let provider = MutableProvider()
+        let s = CompanionStore(provider: provider,
+                               clock: { fixedNow.addingTimeInterval(TimeInterval(tick)) },
+                               fileURL: url, rng: SeededRNG(seed: 3))
+
+        // common #1 (가장 먼저)
+        provider.line = makeLine(base: 100, tree: node(100), rarity: .common)
+        tick = 1; await s.hatch(baseID: 100)
+        s.applyUsage(PokemonBalance.graduationTotal(.common))
+
+        // common #2 (더 나중)
+        provider.line = makeLine(base: 101, tree: node(101), rarity: .common)
+        tick = 2; await s.hatch(baseID: 101)
+        s.applyUsage(PokemonBalance.graduationTotal(.common))
+
+        // legendary (가장 나중이지만 희귀도가 더 높음)
+        provider.line = makeLine(base: 200, tree: node(200), rarity: .legendary)
+        tick = 3; await s.hatch(baseID: 200)
+        s.applyUsage(PokemonBalance.graduationTotal(.legendary))
+
+        XCTAssertEqual(s.dexEntries.count, 3)
+        let sorted = s.dexEntriesSorted
+        // legendary 가 맨 앞
+        XCTAssertEqual(sorted[0].rarity, .legendary)
+        XCTAssertEqual(sorted[0].finalID, 200)
+        // 그다음 common 끼리는 최신(101)이 먼저
+        XCTAssertEqual(sorted[1].rarity, .common)
+        XCTAssertEqual(sorted[1].finalID, 101)
+        XCTAssertEqual(sorted[2].finalID, 100)
+
+        // 희귀도별 카운트
+        XCTAssertEqual(s.dexCount(.common), 2)
+        XCTAssertEqual(s.dexCount(.legendary), 1)
+        XCTAssertEqual(s.dexCount(.rare), 0)
+    }
+}
+
+/// 테스트용 — 라인을 호출 전에 갈아끼울 수 있는 provider. 단일 스레드 테스트 한정.
+private final class MutableProvider: PokeProviding, @unchecked Sendable {
+    nonisolated(unsafe) var line: EvoLine = makeLine(base: 1, tree: node(1))
+    func line(baseSpeciesID: Int) async throws -> EvoLine { line }
+}

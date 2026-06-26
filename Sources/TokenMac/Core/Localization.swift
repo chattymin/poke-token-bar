@@ -102,6 +102,22 @@ struct L {
     var dexEmpty: String { t("아직 졸업한 포켓몬이 없어요. 최종 진화까지 키워보세요.", "No graduated Pokémon yet. Raise one to its final form.", "まだ卒業したポケモンがいません。最終進化まで育ててみましょう。") }
     func formsComplete(_ n: Int) -> String { t("\(n)단계 · 완성", "\(n) forms · complete", "\(n)段階・完成") }
 
+    // MARK: 도감 요약 헤더
+    var dexTitle: String { t("도감", "Pokédex", "図鑑") }
+    func dexTotal(_ n: Int) -> String { t("총 \(n)마리", "\(n) total", "全\(n)匹") }
+    var rarityCommon: String { t("일반", "Common", "ノーマル") }
+    var rarityUncommon: String { t("고급", "Uncommon", "アンコモン") }
+    var rarityRare: String { t("희귀", "Rare", "レア") }
+    var rarityLegendary: String { t("전설", "Legendary", "伝説") }
+    func rarityLabel(_ r: Rarity) -> String {
+        switch r {
+        case .common:    return rarityCommon
+        case .uncommon:  return rarityUncommon
+        case .rare:      return rarityRare
+        case .legendary: return rarityLegendary
+        }
+    }
+
     // 상태 한 줄
     var statusEgg: String { t("곧 깨어나요.", "Hatching soon.", "もうすぐ孵化します。") }
     var statusIdle: String { t("오늘은 조용히 자리를 지켜요.", "Keeping quiet today.", "今日は静かにしています。") }
