@@ -62,11 +62,10 @@ private actor OAuthAccessTokenCache {
             Self.writePokeTokenBarCache(credential.data)
             return credential.accessToken
         }
-        if let credential = Self.readClaudeKeychainViaSecurityCLI() {
-            cachedCredential = credential
-            Self.writePokeTokenBarCache(credential.data)
-            return credential.accessToken
-        }
+        // Claude Keychain 항목은 앱 직접 read 단일 경로로만 읽는다(프롬프트 1회).
+        // 과거의 `security` CLI 보조 경로는 별도 신원이라 같은 항목에 두 번째 ACL 프롬프트를
+        // 띄웠고(1.5s 타임아웃도 대화형에 부적합) 제거함. 최초 1회 허용 후 앱 자체 Keychain
+        // 캐시(writePokeTokenBarCache)에 저장돼 이후 재프롬프트 없음.
         guard allowKeychainPrompt else {
             throw LimitsError.keychainInteractionNotAllowed
         }
@@ -167,20 +166,6 @@ private actor OAuthAccessTokenCache {
         return credential
     }
 
-    private nonisolated static func readClaudeKeychainViaSecurityCLI() -> OAuthCredentialData.Credential? {
-        if KeychainAccessGate.isDisabled { return nil }
-        let data = SecurityCLIKeychainReader.readPasswordData(
-            service: OAuthCredentialData.claudeKeychainService,
-            timeout: 1.5)
-        guard let data else { return nil }
-        guard let credential = OAuthCredentialData.credential(from: data), !credential.isExpired else {
-            AppLog.write("oauth security cli returned unusable credential")
-            return nil
-        }
-        AppLog.write("oauth security cli credential cached")
-        return credential
-    }
-
     private nonisolated static func readClaudeKeychain(
         allowKeychainPrompt: Bool) throws -> OAuthCredentialData.Credential
     {
@@ -209,51 +194,6 @@ private actor OAuthAccessTokenCache {
             throw LimitsError.credentialFormat
         }
         return credential
-    }
-}
-
-private enum SecurityCLIKeychainReader {
-    private static let securityPath = "/usr/bin/security"
-
-    static func readPasswordData(service: String, timeout: TimeInterval) -> Data? {
-        guard FileManager.default.isExecutableFile(atPath: securityPath) else { return nil }
-
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: securityPath)
-        process.arguments = ["find-generic-password", "-s", service, "-w"]
-        process.standardInput = FileHandle.nullDevice
-
-        let output = Pipe()
-        let errorOutput = Pipe()
-        process.standardOutput = output
-        process.standardError = errorOutput
-
-        do {
-            try process.run()
-        } catch {
-            AppLog.write("oauth security cli unavailable: \(error.localizedDescription)")
-            return nil
-        }
-
-        let deadline = Date().addingTimeInterval(timeout)
-        while process.isRunning && Date() < deadline {
-            Thread.sleep(forTimeInterval: 0.02)
-        }
-
-        if process.isRunning {
-            process.terminate()
-            AppLog.write("oauth security cli timed out")
-            return nil
-        }
-
-        let status = process.terminationStatus
-        guard status == 0 else {
-            let stderrCount = errorOutput.fileHandleForReading.readDataToEndOfFile().count
-            AppLog.write("oauth security cli failed status=\(status) stderrBytes=\(stderrCount)")
-            return nil
-        }
-
-        return output.fileHandleForReading.readDataToEndOfFile()
     }
 }
 

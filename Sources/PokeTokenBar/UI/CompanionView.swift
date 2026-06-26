@@ -240,7 +240,7 @@ struct CollectionView: View {
     /// 빈 도감 — 안내 마스코트(피카츄, PokéAPI) + 포켓몬을 모으라는 문구.
     private var emptyState: some View {
         VStack(spacing: 10) {
-            SpriteView(speciesID: 25, size: 96)   // 피카츄
+            SpriteView(speciesID: 25, size: 96, animated: true)   // 피카츄(움직임)
             Text(store.l.dexEmptyTitle).font(.callout.weight(.semibold))
             Text(store.l.dexEmptyHint)
                 .font(.caption).foregroundStyle(.secondary)
