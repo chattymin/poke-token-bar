@@ -99,7 +99,8 @@ struct L {
           "\(name) graduated → saved to the dex. A new Token Egg has arrived!",
           "\(name) 卒業 → 図鑑に保存。新しいToken Eggが届きました！")
     }
-    var dexEmpty: String { t("아직 졸업한 포켓몬이 없어요. 최종 진화까지 키워보세요.", "No graduated Pokémon yet. Raise one to its final form.", "まだ卒業したポケモンがいません。最終進化まで育ててみましょう。") }
+    var dexEmptyTitle: String { t("아직 잡은 포켓몬이 없어요!", "No Pokémon caught yet!", "まだ捕まえたポケモンがいません！") }
+    var dexEmptyHint: String { t("토큰을 써서 첫 포켓몬을 부화시켜 보세요.", "Spend tokens to hatch your first Pokémon.", "トークンを使って最初のポケモンを孵化させましょう。") }
     func formsComplete(_ n: Int) -> String { t("\(n)단계 · 완성", "\(n) forms · complete", "\(n)段階・完成") }
 
     // MARK: 도감 요약 헤더

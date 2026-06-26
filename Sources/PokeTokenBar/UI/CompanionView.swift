@@ -203,12 +203,12 @@ struct DexSummaryHeader: View {
 struct CollectionView: View {
     let store: CompanionStore
     var body: some View {
-        ScrollView {
-            if store.dexEntries.isEmpty {
-                Text(store.l.dexEmpty)
-                    .font(.caption).foregroundStyle(.tertiary)
-                    .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8)
-            } else {
+        if store.dexEntries.isEmpty {
+            emptyState
+        } else {
+            // 고정 높이 — maxHeight 는 팝오버 재오픈 시 ScrollView fitting size 가 작게 잡혀
+            // 크기가 줄어드는 문제가 있어 height 로 고정한다.
+            ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
                     DexSummaryHeader(store: store)
                     ForEach(store.dexEntriesSorted) { entry in
@@ -233,7 +233,20 @@ struct CollectionView: View {
                     }
                 }
             }
+            .frame(height: 520)
         }
-        .frame(maxHeight: 520)
+    }
+
+    /// 빈 도감 — 안내 마스코트(피카츄, PokéAPI) + 포켓몬을 모으라는 문구.
+    private var emptyState: some View {
+        VStack(spacing: 10) {
+            SpriteView(speciesID: 25, size: 96)   // 피카츄
+            Text(store.l.dexEmptyTitle).font(.callout.weight(.semibold))
+            Text(store.l.dexEmptyHint)
+                .font(.caption).foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 28)
     }
 }
