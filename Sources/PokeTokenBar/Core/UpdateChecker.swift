@@ -12,7 +12,7 @@ final class UpdateChecker {
     private(set) var isUpdating = false
 
     let currentVersion: String
-    private let repo = "chattymin/poke-token-bar"
+    private let repo = "chattymin/PokeTokenBar"
     private let clock: () -> Date
     private var lastChecked: Date?
 
