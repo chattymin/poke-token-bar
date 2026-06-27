@@ -9,9 +9,14 @@ enum LimitsError: Error {
     case httpStatus(Int)
 }
 
+/// Claude 한도 조회 추상화 — 실 구현(OAuthLimitsProvider) 또는 테스트 스텁 주입.
+protocol ClaudeLimitsProviding: Sendable {
+    func fetch(allowKeychainPrompt: Bool) async throws -> LimitStatus
+}
+
 /// 공식 한도 % 조회 — Claude Code 자격증명(Keychain)의 OAuth 토큰으로 usage endpoint 호출.
 /// 비공식 endpoint 이므로 실패해도 토큰 표시에는 영향 없음 (한도 섹션만 숨김).
-struct OAuthLimitsProvider: Sendable {
+struct OAuthLimitsProvider: ClaudeLimitsProviding, Sendable {
     private static let usageURL = URL(string: "https://api.anthropic.com/api/oauth/usage")!
     private let accessTokenCache = OAuthAccessTokenCache.shared
 

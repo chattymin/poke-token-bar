@@ -1,8 +1,13 @@
 import Foundation
 
+/// Codex 한도 조회 추상화 — 실 구현(CodexRateLimitsProvider) 또는 테스트 스텁 주입.
+protocol CodexLimitsProviding: Sendable {
+    func fetch() async throws -> CodexRateLimitStatus?
+}
+
 /// Codex CLI app-server의 account/rateLimits/read 응답으로 Codex 한도 %를 읽는다.
 /// 모델 turn을 시작하지 않고 account snapshot만 요청한다.
-struct CodexRateLimitsProvider {
+struct CodexRateLimitsProvider: CodexLimitsProviding {
     let binaryCandidates: [String]
 
     init(binaryCandidates: [String] = Self.defaultBinaryCandidates) {

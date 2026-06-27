@@ -76,8 +76,8 @@ final class UsageStore {
     var localizationLanguage: AppLanguage = .ko
 
     private let providers: [any UsageProvider]
-    private let limitsProvider = OAuthLimitsProvider()
-    private let codexLimitsProvider = CodexRateLimitsProvider()
+    private let limitsProvider: any ClaudeLimitsProviding
+    private let codexLimitsProvider: any CodexLimitsProviding
     private var timer: Timer?
     private var emptyUsageRetryTask: Task<Void, Never>?
     /// 같은 한도 블록(resets_at 기준)에 대해 알림 1회만 발화
@@ -189,8 +189,13 @@ final class UsageStore {
 
     // MARK: 생명주기
 
-    init(providers: [any UsageProvider] = [CcusageProvider.claude, CcusageProvider.codex]) {
+    init(providers: [any UsageProvider] = [CcusageProvider.claude, CcusageProvider.codex],
+         claudeLimitsProvider: any ClaudeLimitsProviding = OAuthLimitsProvider(),
+         codexLimitsProvider: any CodexLimitsProviding = CodexRateLimitsProvider(),
+         autoRefresh: Bool = true) {
         self.providers = providers
+        self.limitsProvider = claudeLimitsProvider
+        self.codexLimitsProvider = codexLimitsProvider
         let d = UserDefaults.standard
         refreshInterval = d.object(forKey: "refreshInterval") as? TimeInterval ?? 120
         warnThreshold = d.object(forKey: "warnThreshold") as? Double ?? 80
@@ -218,7 +223,7 @@ final class UsageStore {
         }
 
         requestNotificationAuthorization()
-        Task { await refresh() }
+        if autoRefresh { Task { await refresh() } }
     }
 
     private func reschedule() {
@@ -397,7 +402,7 @@ final class UsageStore {
 
     /// 한도 갱신 실패를 사용자 친화 메시지로 변환. Codex만 쓰는 사용자는 401 이 정상이라,
     /// raw "httpStatus(401)" 대신 "무시해도 된다"는 안내를 보여준다.
-    private static func friendlyLimitError(_ error: any Error, _ l: L) -> String {
+    static func friendlyLimitError(_ error: any Error, _ l: L) -> String {
         guard let limitsError = error as? LimitsError else { return l.limitRefreshGeneric }
         switch limitsError {
         case .httpStatus(let status):
