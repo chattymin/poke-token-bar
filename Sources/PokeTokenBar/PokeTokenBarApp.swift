@@ -19,6 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var store: UsageStore!
     private var companion: CompanionStore!
     private var updater: UpdateChecker!
+    private let navigation = PopoverNavigation()
 
     // 메뉴바 캐릭터 애니메이션 — 단일 타이머로 프레임 순환.
     // 프레임 = 이미 22px 로 합성된 이미지 + delay. egg/static 은 2프레임 bob, animated 는 GIF 실제 프레임.
@@ -47,7 +48,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         popover.contentViewController = NSHostingController(
-            rootView: PopoverView().environment(store).environment(companion).environment(updater))
+            rootView: PopoverView()
+                .environment(store).environment(companion).environment(updater).environment(navigation))
         popover.behavior = .transient
 
         observeStore()
@@ -203,6 +205,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if popover.isShown {
             popover.performClose(nil)
         } else {
+            navigation.reset()   // 닫혔다 열리면 항상 Home 으로 (설정 화면 잔류 방지)
             // LSUIElement 앱이 비활성이면 팝오버 내부 버튼 클릭이 무시됨 — show 전에 활성화 보장
             NSApp.activate(ignoringOtherApps: true)
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)

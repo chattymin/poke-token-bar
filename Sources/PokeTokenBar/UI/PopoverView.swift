@@ -2,21 +2,36 @@ import SwiftUI
 
 enum PopoverTab { case home, collection }
 
+/// 팝오버 내부 내비게이션 상태(현재 탭 / 설정 표시 여부).
+/// NSHostingController 는 팝오버를 닫아도 재사용되어 @State 가 유지되므로, 화면 상태를 이
+/// Observable 로 분리해 AppDelegate 가 팝오버를 열 때마다 reset() 한다 — 닫혔다 열리면 항상 Home.
+@MainActor
+@Observable
+final class PopoverNavigation {
+    var showSettings = false
+    var tab: PopoverTab = .home
+
+    func reset() {
+        showSettings = false
+        tab = .home
+    }
+}
+
 struct PopoverView: View {
     @Environment(UsageStore.self) private var store
     @Environment(CompanionStore.self) private var companion
     @Environment(UpdateChecker.self) private var updater
-    @State private var showSettings = false
-    @State private var tab: PopoverTab = .home
+    @Environment(PopoverNavigation.self) private var nav
 
     private var l: L { companion.l }
 
     var body: some View {
         // NOTE: 설정을 .sheet 로 띄우면 transient 팝오버가 닫힐 때 시트가 고아로 남아
         // 이후 팝오버의 모든 버튼 클릭을 차단할 수 있음 — 팝오버 내부 화면 전환으로 처리
+        @Bindable var nav = nav
         Group {
-            if showSettings {
-                SettingsView(onClose: { showSettings = false })
+            if nav.showSettings {
+                SettingsView(onClose: { nav.showSettings = false })
                     .environment(store)
                     .environment(companion)
             } else {
@@ -50,16 +65,17 @@ struct PopoverView: View {
     }
 
     private var mainContent: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        @Bindable var nav = nav
+        return VStack(alignment: .leading, spacing: 12) {
             updateBanner
-            Picker("", selection: $tab) {
+            Picker("", selection: $nav.tab) {
                 Text(l.home).tag(PopoverTab.home)
                 Text(l.collection).tag(PopoverTab.collection)
             }
             .pickerStyle(.segmented)
             .labelsHidden()
 
-            if tab == .collection {
+            if nav.tab == .collection {
                 CollectionView(store: companion)
             } else {
                 CompanionHeader(store: companion)
@@ -371,7 +387,7 @@ struct PopoverView: View {
             }
             Spacer()
             Button {
-                showSettings = true
+                nav.showSettings = true
             } label: {
                 Image(systemName: "gearshape")
             }
