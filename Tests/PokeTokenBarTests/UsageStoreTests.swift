@@ -44,7 +44,7 @@ private struct FakeCodexLimits: CodexLimitsProviding {
 // MARK: 픽스처 헬퍼
 
 private func todayDaily(_ tokens: Int, cost: Double = 0) -> DailyUsage {
-    DailyUsage(date: CcusageProvider.todayKey(), inputTokens: 0, outputTokens: 0,
+    DailyUsage(date: LocalUsageReader.todayKey(), inputTokens: 0, outputTokens: 0,
                cacheCreationTokens: 0, cacheReadTokens: 0, totalTokens: tokens, totalCost: cost)
 }
 

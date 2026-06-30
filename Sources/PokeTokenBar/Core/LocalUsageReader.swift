@@ -223,6 +223,8 @@ enum LocalUsageReader {
         return f.string(from: date)
     }
 
+    static func todayKey() -> String { localDayFormatter().string(from: Date()) }
+
     static func localDayFormatter() -> DateFormatter {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd"

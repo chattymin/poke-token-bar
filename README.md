@@ -18,7 +18,7 @@
 
 PokeTokenBar shows how many AI coding tokens you've burned today — Claude Code & Codex — in your macOS menu bar, and turns that usage into a growing **Pokémon companion**. Spend tokens, hatch an egg, evolve it through its real evolution line, graduate it into your Pokédex, and start again.
 
-> Token accounting is powered by [ccusage](https://github.com/ryoppippi/ccusage) (`totalTokens` = input + output + cache, local date). Unofficial, non-commercial Pokémon fan project — see [License & disclaimer](#license--disclaimer).
+> Token usage is read directly from your local Claude Code & Codex logs (`totalTokens` = input + output + cache, local date) — no external CLI needed. Unofficial, non-commercial Pokémon fan project — see [License & disclaimer](#license--disclaimer).
 
 ## Why
 
@@ -71,11 +71,7 @@ PokeTokenBar shows how many AI coding tokens you've burned today — Claude Code
 
 ### Requirements
 
-macOS 14+ (Apple Silicon or Intel), and [ccusage](https://github.com/ryoppippi/ccusage) on your PATH:
-
-```bash
-npm install -g ccusage
-```
+macOS 14+ (Apple Silicon or Intel). That's it — token usage is read directly from your local Claude Code / Codex logs, no external CLI required.
 
 ### Homebrew
 
@@ -97,15 +93,15 @@ swift test                   # unit tests
 
 | Source | Used for | Notes |
 |---|---|---|
-| `ccusage` | Claude Code daily/blocks/weekly/monthly | hidden if absent; supports ccusage 18.x & 20.x |
-| `ccusage codex` | Codex daily/monthly | weekly = daily sum (no `codex weekly`) |
+| `~/.claude/projects/**/*.jsonl` | Claude Code daily/blocks/weekly/monthly | read directly; deduped by message id; cached incrementally |
+| `~/.codex/sessions/**/*.jsonl` | Codex daily/monthly | `token_count` events; weekly = daily sum |
 | Keychain → `oauth/usage` | Claude official 5h/weekly % | unofficial endpoint; single Keychain prompt, then cached |
 | `codex app-server` | Codex official 5h/weekly % | account snapshot only; no model turn |
 | [PokéAPI](https://pokeapi.co/) | Pokémon species, evolution, sprites | runtime fetch; cached locally, never bundled |
 
 ## Privacy & permissions
 
-- **On-device.** Usage is parsed by ccusage; the app never runs `claude`/`codex` model turns, only reads usage.
+- **On-device.** Token usage is read directly from your local Claude Code / Codex logs; the app never runs `claude`/`codex` model turns, only reads usage.
 - **Keychain (optional).** To show official limits it reads the Claude OAuth credential **once** (a single password prompt), then caches it in the app's own Keychain item for reuse. Turn it off in Settings — the limits section simply hides.
 - **Pokémon assets** are fetched at runtime from PokéAPI and cached only under `~/Library/Application Support/PokeTokenBar/`. Nothing copyrighted is bundled in this repository or its releases.
 
