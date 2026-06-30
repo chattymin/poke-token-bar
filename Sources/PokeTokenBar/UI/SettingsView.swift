@@ -15,6 +15,11 @@ struct SettingsView: View {
         Bundle.main.bundlePath.hasSuffix(".app")
     }
 
+    /// 현재 앱 버전 — 업데이트 적용 여부 확인용으로 설정창 하단에 표기.
+    private static var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
+    }
+
     var body: some View {
         @Bindable var store = store
         VStack(alignment: .leading, spacing: 14) {
@@ -133,6 +138,9 @@ struct SettingsView: View {
                 .foregroundStyle(.tertiary)
 
             HStack {
+                Text("v\(Self.appVersion)")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
                 Spacer()
                 Button(l.close) { onClose() }
                     .keyboardShortcut(.defaultAction)
