@@ -42,7 +42,7 @@ final class LocalUsageParityTests: XCTestCase {
         let now = Date()
         let fmt = LocalUsageReader.localDayFormatter()
         let monthStart = LocalUsageReader.startOfMonth(now)
-        let today = CcusageProvider.todayKey()
+        let today = LocalUsageReader.todayKey()
 
         let claude = LocalUsageReader.claudeEntries(modifiedSince: monthStart)
         let codex = LocalUsageReader.codexEntries(modifiedSince: monthStart)

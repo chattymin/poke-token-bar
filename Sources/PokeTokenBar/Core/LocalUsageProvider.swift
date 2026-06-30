@@ -8,7 +8,7 @@ struct LocalClaudeProvider: UsageProvider {
     func fetchDaily() async throws -> DailyUsage? {
         let now = Date()
         let entries = await LocalUsageCache.shared.claudeEntries(modifiedSince: Calendar.current.startOfDay(for: now))
-        return LocalUsageReader.daily(entries: entries, localDay: CcusageProvider.todayKey())
+        return LocalUsageReader.daily(entries: entries, localDay: LocalUsageReader.todayKey())
     }
 
     func fetchEnrichment() async -> ProviderEnrichment {
@@ -41,7 +41,7 @@ struct LocalCodexProvider: UsageProvider {
     func fetchDaily() async throws -> DailyUsage? {
         let now = Date()
         let entries = await LocalUsageCache.shared.codexEntries(modifiedSince: Calendar.current.startOfDay(for: now))
-        guard let d = LocalUsageReader.daily(entries: entries, localDay: CcusageProvider.todayKey()) else { return nil }
+        guard let d = LocalUsageReader.daily(entries: entries, localDay: LocalUsageReader.todayKey()) else { return nil }
         return DailyUsage(date: d.date, inputTokens: d.inputTokens, outputTokens: d.outputTokens,
                           cacheCreationTokens: d.cacheCreationTokens, cacheReadTokens: d.cacheReadTokens,
                           totalTokens: d.totalTokens, totalCost: 0)

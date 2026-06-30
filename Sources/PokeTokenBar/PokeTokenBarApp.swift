@@ -87,7 +87,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func updateCompanion() {
         companion.update(
             todayTokens: store.todayTotalTokens,
-            todayDate: CcusageProvider.todayKey(),
+            todayDate: LocalUsageReader.todayKey(),
             monthTotal: store.monthTotalTokens,
             burnTier: store.burnTier,
             limitWarning: store.isLimitWarning,

@@ -88,7 +88,7 @@ final class UsageStore {
 
     var todayTotalTokens: Int {
         // 날짜 가드: 스냅샷의 일자가 현재 로컬 날짜와 다르면 (자정 직후 등) 합계에서 제외
-        let todayKey = CcusageProvider.todayKey()
+        let todayKey = LocalUsageReader.todayKey()
         return snapshots.reduce(0) { $0 + ($1.today?.date == todayKey ? $1.todayTotalTokens : 0) }
     }
 
@@ -116,7 +116,7 @@ final class UsageStore {
     }
 
     var todayCostTotal: Double {
-        let todayKey = CcusageProvider.todayKey()
+        let todayKey = LocalUsageReader.todayKey()
         return snapshots.reduce(0) { $0 + ($1.today?.date == todayKey ? ($1.today?.totalCost ?? 0) : 0) }
     }
 
@@ -278,7 +278,7 @@ final class UsageStore {
             isRefreshing = false
         }
 
-        let todayKey = CcusageProvider.todayKey()
+        let todayKey = LocalUsageReader.todayKey()
 
         // ── Phase 1: daily (critical) — 메뉴바 숫자와 stale 판정은 여기서 확정.
         // 블록/주월 상세가 느리거나 멈춰도 메뉴바 숫자는 영향받지 않는다.

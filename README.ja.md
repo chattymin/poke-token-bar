@@ -18,7 +18,7 @@
 
 PokeTokenBar は、今日使ったAIコーディングトークン（Claude Code・Codex）を macOS メニューバーに表示し、その使用量を育っていく **ポケモンのパートナー** に変えます。トークンを使うとタマゴが孵化し、実際の進化ラインに沿って進化し、最終進化後に図鑑へ卒業して、また新しいタマゴが始まります。
 
-> トークン集計は [ccusage](https://github.com/ryoppippi/ccusage)（`totalTokens` = input + output + cache、ローカル日付）を使用。非公式・非商用のポケモンファンプロジェクトです — [ライセンス & 免責](#ライセンス--免責) を参照。
+> トークン使用量はローカルの Claude Code・Codex ログから直接読み取ります（`totalTokens` = input + output + cache、ローカル日付）— 外部 CLI 不要。非公式・非商用のポケモンファンプロジェクトです — [ライセンス & 免責](#ライセンス--免責) を参照。
 
 ## なぜ
 
@@ -71,11 +71,7 @@ PokeTokenBar は、今日使ったAIコーディングトークン（Claude Code
 
 ### 必要条件
 
-macOS 14+（Apple Silicon または Intel）と、PATH 上の [ccusage](https://github.com/ryoppippi/ccusage)：
-
-```bash
-npm install -g ccusage
-```
+macOS 14+（Apple Silicon または Intel）。それだけ — トークン使用量はローカルの Claude Code / Codex ログから直接読み取り、外部 CLI は不要です。
 
 ### Homebrew
 
@@ -97,15 +93,15 @@ swift test                   # ユニットテスト
 
 | ソース | 用途 | 備考 |
 |---|---|---|
-| `ccusage` | Claude Code daily/blocks/weekly/monthly | 未インストール時は非表示；ccusage 18.x・20.x 対応 |
-| `ccusage codex` | Codex daily/monthly | 週間 = daily 合算（`codex weekly` なし） |
+| `~/.claude/projects/**/*.jsonl` | Claude Code daily/blocks/weekly/monthly | 直接読み取り；メッセージ id で重複排除；増分キャッシュ |
+| `~/.codex/sessions/**/*.jsonl` | Codex daily/monthly | `token_count` イベント；週間 = daily 合算 |
 | Keychain → `oauth/usage` | Claude 公式 5h/週間 % | 非公式 endpoint；Keychain プロンプト1回後にキャッシュ |
 | `codex app-server` | Codex 公式 5h/週間 % | アカウント snapshot のみ；モデル turn なし |
 | [PokéAPI](https://pokeapi.co/) | ポケモンの種・進化・スプライト | ランタイム取得；ローカルキャッシュ、バンドルしない |
 
 ## プライバシー & 権限
 
-- **オンデバイス。** 使用量は ccusage で解析し、アプリは `claude`/`codex` のモデル turn を実行せず、使用量のみ読み取ります。
+- **オンデバイス。** トークン使用量はローカルの Claude Code / Codex ログから直接読み取り、アプリは `claude`/`codex` のモデル turn を実行せず、使用量のみ読み取ります。
 - **Keychain（任意）。** 公式の上限を表示するため、Claude OAuth 資格情報を **1回**（パスワードのプロンプト1回）読み取り、アプリ自身の Keychain 項目にキャッシュして再利用します。設定でオフにすると上限セクションが非表示になります。
 - **ポケモンのアセット** はランタイムに PokéAPI から取得し、`~/Library/Application Support/PokeTokenBar/` にのみキャッシュされます。著作物はこのリポジトリやリリースにバンドルしません。
 

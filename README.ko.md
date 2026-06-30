@@ -18,7 +18,7 @@
 
 PokeTokenBar는 오늘 사용한 AI 코딩 토큰(Claude Code · Codex)을 macOS 메뉴바에 보여주고, 그 사용량을 자라나는 **포켓몬 companion**으로 바꿔줍니다. 토큰을 쓰면 알이 부화하고, 실제 진화 라인을 따라 진화하며, 최종 진화 후 도감에 졸업하고, 다시 새 알이 시작됩니다.
 
-> 토큰 집계는 [ccusage](https://github.com/ryoppippi/ccusage)(`totalTokens` = input + output + cache, 로컬 날짜) 기반입니다. 비공식·비상업 포켓몬 팬 프로젝트 — [라이선스 & 면책](#라이선스--면책) 참고.
+> 토큰 사용량은 로컬 Claude Code·Codex 로그에서 직접 읽습니다(`totalTokens` = input + output + cache, 로컬 날짜) — 외부 CLI 불필요. 비공식·비상업 포켓몬 팬 프로젝트 — [라이선스 & 면책](#라이선스--면책) 참고.
 
 ## 왜
 
@@ -71,11 +71,7 @@ PokeTokenBar는 오늘 사용한 AI 코딩 토큰(Claude Code · Codex)을 macOS
 
 ### 요구사항
 
-macOS 14+ (Apple Silicon 또는 Intel), 그리고 PATH에 설치된 [ccusage](https://github.com/ryoppippi/ccusage):
-
-```bash
-npm install -g ccusage
-```
+macOS 14+ (Apple Silicon 또는 Intel). 끝입니다 — 토큰 사용량은 로컬 Claude Code/Codex 로그에서 직접 읽으며 외부 CLI가 필요 없습니다.
 
 ### Homebrew
 
@@ -97,15 +93,15 @@ swift test                   # 단위 테스트
 
 | 소스 | 용도 | 비고 |
 |---|---|---|
-| `ccusage` | Claude Code daily/blocks/weekly/monthly | 미설치 시 숨김; ccusage 18.x·20.x 지원 |
-| `ccusage codex` | Codex daily/monthly | 주간 = daily 합산(`codex weekly` 없음) |
+| `~/.claude/projects/**/*.jsonl` | Claude Code daily/blocks/weekly/monthly | 직접 읽음; 메시지 id 로 중복제거; 증분 캐시 |
+| `~/.codex/sessions/**/*.jsonl` | Codex daily/monthly | `token_count` 이벤트; 주간 = daily 합산 |
 | Keychain → `oauth/usage` | Claude 공식 5h/주간 % | 비공식 endpoint; Keychain 프롬프트 1회 후 캐시 |
 | `codex app-server` | Codex 공식 5h/주간 % | 계정 snapshot만; 모델 turn 없음 |
 | [PokéAPI](https://pokeapi.co/) | 포켓몬 종·진화·스프라이트 | 런타임 fetch; 로컬 캐시, 번들 안 함 |
 
 ## 프라이버시 & 권한
 
-- **온디바이스.** 사용량은 ccusage로 파싱하며, 앱은 `claude`/`codex` 모델 turn을 실행하지 않고 사용량만 읽습니다.
+- **온디바이스.** 토큰 사용량은 로컬 Claude Code/Codex 로그에서 직접 읽으며, 앱은 `claude`/`codex` 모델 turn을 실행하지 않고 사용량만 읽습니다.
 - **Keychain(선택).** 공식 한도를 보여주려면 Claude OAuth 자격증명을 **1회**(비밀번호 프롬프트 1번) 읽고, 앱 자체 Keychain 항목에 캐시해 재사용합니다. 설정에서 끄면 한도 섹션만 숨겨집니다.
 - **포켓몬 에셋**은 런타임에 PokéAPI에서 받아오며 `~/Library/Application Support/PokeTokenBar/`에만 캐시됩니다. 저작물은 레포나 릴리스에 번들하지 않습니다.
 
