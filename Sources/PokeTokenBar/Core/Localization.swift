@@ -135,6 +135,9 @@ struct L {
     // MARK: companion 이벤트 시스템 알림
     var notifHatchTitle: String { t("🥚 부화!", "🥚 Hatched!", "🥚 孵化！") }
     func notifHatchBody(_ name: String) -> String { t("알에서 \(name)이(가) 나왔어요!", "\(name) hatched from the egg!", "タマゴから \(name) が生まれました！") }
+    var notifShinyHatchTitle: String { t("✨ 색이 다른 포켓몬!", "✨ Shiny Pokémon!", "✨ 色違いポケモン！") }
+    func notifShinyHatchBody(_ name: String) -> String { t("색이 다른 \(name)이(가) 태어났어요! (1/64)", "A shiny \(name) hatched! (1 in 64)", "色違いの \(name) が生まれました！(1/64)") }
+    var eggImminent: String { t("곧 부화해요!", "About to hatch!", "もうすぐ孵化！") }
     var notifEvolveTitle: String { t("✨ 진화!", "✨ Evolved!", "✨ 進化！") }
     func notifEvolveBody(_ name: String) -> String { t("\(name)(으)로 진화했어요!", "Evolved into \(name)!", "\(name) に進化しました！") }
     var notifGraduateTitle: String { t("🎓 졸업!", "🎓 Graduated!", "🎓 卒業！") }

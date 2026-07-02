@@ -15,6 +15,14 @@ final class CompanionStore {
     private(set) var justGraduated: String?
     private var eventUntil: Date?
 
+    /// 부화/진화 연출 트리거 — seq 증가로 UI 가 감지, 팝오버가 닫혀 있었어도 다음 오픈에 1회 재생.
+    enum Celebration: Equatable { case hatch(shiny: Bool), evolve }
+    private(set) var celebration: Celebration?
+    private(set) var celebrationSeq = 0
+    private func fireCelebration(_ c: Celebration) { celebration = c; celebrationSeq += 1 }
+    /// 연출 재생 후 UI 가 호출(1회성 보장).
+    func consumeCelebration() { celebration = nil }
+
     private let provider: any PokeProviding
     private let clock: () -> Date
     private let fileURL: URL
@@ -48,6 +56,8 @@ final class CompanionStore {
 
     var hasActive: Bool { state.active != nil }
     var rarity: Rarity? { state.active?.rarity }
+    var currentIsShiny: Bool { state.active?.isShiny ?? false }
+    var currentNature: PokemonNature? { state.active?.nature }
 
     // 알 인큐베이션 (active 없을 때)
     var isEgg: Bool { state.active == nil }
@@ -166,6 +176,7 @@ final class CompanionStore {
                 state.active!.usedAtStage = a.usedAtStage - thr   // 초과분 이월
                 let newName = line.localizedName(next.speciesID, state.language)
                 justEvolvedTo = newName
+                fireCelebration(.evolve)
                 notifyCompanionEvent(l.notifEvolveTitle, l.notifEvolveBody(newName))
             }
         }
@@ -185,7 +196,8 @@ final class CompanionStore {
         let finalID = a.currentID
         state.collectedFinals.insert("\(a.baseID):\(finalID)")
         state.dex.append(DexEntry(baseID: a.baseID, finalID: finalID,
-                                  chainOrder: a.pathIDs, rarity: a.rarity, caughtAt: clock()))
+                                  chainOrder: a.pathIDs, rarity: a.rarity, caughtAt: clock(),
+                                  isShiny: a.isShiny, nature: a.nature))
         let name = currentLine?.localizedName(finalID, state.language) ?? ""
         justGraduated = name
         notifyCompanionEvent(l.notifGraduateTitle, l.notifGraduateBody(name))
@@ -225,11 +237,18 @@ final class CompanionStore {
         // 부화 임계 초과분은 부화체 성장에 이월(낭비 없음).
         let overflow = max(0, state.eggUsage - PokemonBalance.eggHatchThreshold)
         state.eggUsage = 0
+        // 개체 롤 — shiny(1/64)·성격(25종)은 부화 순간 확정, 진화해도 유지.
+        let isShiny = rng.next() % PokemonOdds.shinyDenominator == 0
+        let nature = PokemonNature.allCases[Int(rng.next() % UInt64(PokemonNature.allCases.count))]
         state.active = MonState(baseID: line.baseID, pathIDs: [line.baseID], stageIndex: 0,
-                                usedAtStage: 0, rarity: line.rarity, totalForms: line.totalForms)
-        notifyCompanionEvent(l.notifHatchTitle, l.notifHatchBody(line.localizedName(line.baseID, state.language)))
+                                usedAtStage: 0, rarity: line.rarity, totalForms: line.totalForms,
+                                isShiny: isShiny, nature: nature)
+        let name = line.localizedName(line.baseID, state.language)
+        notifyCompanionEvent(isShiny ? l.notifShinyHatchTitle : l.notifHatchTitle,
+                             isShiny ? l.notifShinyHatchBody(name) : l.notifHatchBody(name))
         displayState = .levelUp
         eventUntil = clock().addingTimeInterval(4)
+        fireCelebration(.hatch(shiny: isShiny))
         if overflow > 0 { applyUsage(overflow) }   // 이월분 즉시 반영(필요 시 진화까지)
         save()
     }

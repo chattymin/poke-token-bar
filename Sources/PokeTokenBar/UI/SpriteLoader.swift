@@ -12,15 +12,24 @@ actor SpriteStore {
         return d
     }()
 
-    func data(speciesID: Int, animated: Bool) async -> Data? {
-        let key = "\(speciesID)-\(animated ? "a" : "s")"
+    /// 캐시 파일명 키 — 기존 "\(id)-a"/"\(id)-s" 유지, shiny 는 "sh" 접두(구캐시 그대로 유효).
+    static func cacheKey(speciesID: Int, animated: Bool, shiny: Bool) -> String {
+        "\(speciesID)-\(shiny ? "sh" : "")\(animated ? "a" : "s")"
+    }
+
+    func data(speciesID: Int, animated: Bool, shiny: Bool = false) async -> Data? {
+        let key = Self.cacheKey(speciesID: speciesID, animated: animated, shiny: shiny)
         if let d = mem[key] { return d }
         let ext = animated ? "gif" : "png"
         let file = dir.appendingPathComponent("\(key).\(ext)")
         if let d = try? Data(contentsOf: file) { mem[key] = d; return d }
-        let urlStr = animated
-            ? "\(base)/versions/generation-v/black-white/animated/\(speciesID).gif"
-            : "\(base)/\(speciesID).png"
+        let urlStr: String
+        switch (animated, shiny) {
+        case (true, false):  urlStr = "\(base)/versions/generation-v/black-white/animated/\(speciesID).gif"
+        case (true, true):   urlStr = "\(base)/versions/generation-v/black-white/animated/shiny/\(speciesID).gif"
+        case (false, false): urlStr = "\(base)/\(speciesID).png"
+        case (false, true):  urlStr = "\(base)/shiny/\(speciesID).png"
+        }
         guard let url = URL(string: urlStr),
               let (d, resp) = try? await URLSession.shared.data(from: url),
               (resp as? HTTPURLResponse)?.statusCode == 200, !d.isEmpty else { return nil }
@@ -38,19 +47,27 @@ enum SpriteLoader {
     }()
 
     /// 디스크 캐시에 이미 있으면 동기 반환(네트워크 없음). 없으면 nil.
-    static func cachedImage(speciesID: Int, animated: Bool = false) -> NSImage? {
+    static func cachedImage(speciesID: Int, animated: Bool = false, shiny: Bool = false) -> NSImage? {
         let ext = animated ? "gif" : "png"
-        let f = cacheDir.appendingPathComponent("\(speciesID)-\(animated ? "a" : "s").\(ext)")
+        let key = SpriteStore.cacheKey(speciesID: speciesID, animated: animated, shiny: shiny)
+        let f = cacheDir.appendingPathComponent("\(key).\(ext)")
         guard let d = try? Data(contentsOf: f) else { return nil }
         return NSImage(data: d)
     }
 
     /// 정적 스프라이트. animated=true 면 Gen-V 움직이는 스프라이트(없으면 정적으로 폴백).
-    static func image(speciesID: Int, animated: Bool = false) async -> NSImage? {
-        if animated, let d = await SpriteStore.shared.data(speciesID: speciesID, animated: true), let img = NSImage(data: d) {
+    /// shiny=true 는 색이 다른 스프라이트 — 미제공 종이면 일반으로 폴백.
+    static func image(speciesID: Int, animated: Bool = false, shiny: Bool = false) async -> NSImage? {
+        if animated, let d = await SpriteStore.shared.data(speciesID: speciesID, animated: true, shiny: shiny),
+           let img = NSImage(data: d) {
             return img
         }
-        guard let d = await SpriteStore.shared.data(speciesID: speciesID, animated: false) else { return nil }
-        return NSImage(data: d)
+        if let d = await SpriteStore.shared.data(speciesID: speciesID, animated: false, shiny: shiny),
+           let img = NSImage(data: d) {
+            return img
+        }
+        // shiny 미제공 → 일반 폴백
+        guard shiny else { return nil }
+        return await image(speciesID: speciesID, animated: animated, shiny: false)
     }
 }

@@ -23,7 +23,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // 메뉴바 캐릭터 애니메이션 — 단일 타이머로 프레임 순환.
     // 프레임 = 이미 22px 로 합성된 이미지 + delay. egg/static 은 2프레임 bob, animated 는 GIF 실제 프레임.
-    private var menuSpriteID: Int?
+    private var menuSpriteKey: String?   // "id-shiny" — 같은 종이라도 shiny 여부가 바뀌면 재로딩
     private var menuFrames: [(image: NSImage, delay: TimeInterval)] = []
     private var menuIndex = 0
     private var menuTimer: Timer?
@@ -102,8 +102,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// 에선 GIF 생략(가벼운 bob)로 처리한다 — 통제된 저프레임 + 비가시 시 정지로 저전력.
     private func ensureMenuAnimation(forceRebuild: Bool = false) {
         let id = companion.currentSpeciesID
-        if !forceRebuild, id == menuSpriteID, !menuFrames.isEmpty { return }   // 이미 이 종으로 애니메이션 중
-        menuSpriteID = id
+        let shiny = companion.currentIsShiny
+        let key = id.map { "\($0)-\(shiny)" }
+        if !forceRebuild, key == menuSpriteKey, !menuFrames.isEmpty { return }   // 이미 이 개체로 애니메이션 중
+        menuSpriteKey = key
         menuLoadGen += 1
         let gen = menuLoadGen
 
@@ -112,13 +114,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         // 정적 스프라이트 bob 을 먼저(없으면 받아와서). GIF 가 받아지면 아래에서 교체.
-        if let cached = SpriteLoader.cachedImage(speciesID: id) {
+        if let cached = SpriteLoader.cachedImage(speciesID: id, shiny: shiny) {
             setMenuFrames(Self.bobFrames(from: cached))
         } else {
             setMenuFrames(Self.eggFrames())
             Task { @MainActor [weak self] in
                 guard let self, gen == self.menuLoadGen,
-                      let sprite = await SpriteLoader.image(speciesID: id) else { return }
+                      let sprite = await SpriteLoader.image(speciesID: id, shiny: shiny) else { return }
                 guard gen == self.menuLoadGen else { return }
                 self.setMenuFrames(Self.bobFrames(from: sprite))
             }
@@ -127,8 +129,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // 풀 GIF 애니메이션(저전력 모드에서는 생략하고 bob 유지). delay 하한 0.1s(≤10fps)로 redraw 통제.
         guard !ProcessInfo.processInfo.isLowPowerModeEnabled else { return }
         Task { @MainActor [weak self] in
-            guard let self, gen == self.menuLoadGen,
-                  let data = await SpriteStore.shared.data(speciesID: id, animated: true) else { return }
+            guard let self, gen == self.menuLoadGen else { return }
+            // shiny GIF 미제공 종이면 일반 GIF 폴백
+            var data = await SpriteStore.shared.data(speciesID: id, animated: true, shiny: shiny)
+            if data == nil, shiny {
+                data = await SpriteStore.shared.data(speciesID: id, animated: true, shiny: false)
+            }
+            guard let data else { return }
             let raw = GIFDecoder.frames(from: data)
             guard raw.count > 1, gen == self.menuLoadGen else { return }
             // 메뉴바 GIF 는 delay 하한 0.2s(≈5fps)로 캡 — 22px 스프라이트엔 충분하고 저전력.

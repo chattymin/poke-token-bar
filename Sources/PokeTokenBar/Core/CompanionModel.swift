@@ -99,6 +99,54 @@ struct EvoLine: Sendable {
     }
 }
 
+/// 성격 — 본가 25종. 부화 시 확정, 능력치 영향 없음(개체 아이덴티티 표시용).
+enum PokemonNature: String, Codable, Sendable, CaseIterable {
+    case hardy, lonely, brave, adamant, naughty
+    case bold, docile, relaxed, impish, lax
+    case timid, hasty, serious, jolly, naive
+    case modest, mild, quiet, bashful, rash
+    case calm, gentle, sassy, careful, quirky
+
+    /// 본가 공식 번역 명칭 (ko/en/ja).
+    func name(_ lang: AppLanguage) -> String {
+        let names: (String, String, String)
+        switch self {
+        case .hardy:   names = ("노력", "Hardy", "がんばりや")
+        case .lonely:  names = ("외로움", "Lonely", "さみしがり")
+        case .brave:   names = ("용감", "Brave", "ゆうかん")
+        case .adamant: names = ("고집", "Adamant", "いじっぱり")
+        case .naughty: names = ("개구쟁이", "Naughty", "やんちゃ")
+        case .bold:    names = ("대담", "Bold", "ずぶとい")
+        case .docile:  names = ("온순", "Docile", "すなお")
+        case .relaxed: names = ("무사태평", "Relaxed", "のんき")
+        case .impish:  names = ("장난꾸러기", "Impish", "わんぱく")
+        case .lax:     names = ("촐랑", "Lax", "のうてんき")
+        case .timid:   names = ("겁쟁이", "Timid", "おくびょう")
+        case .hasty:   names = ("성급", "Hasty", "せっかち")
+        case .serious: names = ("성실", "Serious", "まじめ")
+        case .jolly:   names = ("명랑", "Jolly", "ようき")
+        case .naive:   names = ("천진난만", "Naive", "むじゃき")
+        case .modest:  names = ("조심", "Modest", "ひかえめ")
+        case .mild:    names = ("의젓", "Mild", "おっとり")
+        case .quiet:   names = ("냉정", "Quiet", "れいせい")
+        case .bashful: names = ("수줍음", "Bashful", "てれや")
+        case .rash:    names = ("덜렁", "Rash", "うっかりや")
+        case .calm:    names = ("차분", "Calm", "おだやか")
+        case .gentle:  names = ("얌전", "Gentle", "おとなしい")
+        case .sassy:   names = ("건방", "Sassy", "なまいき")
+        case .careful: names = ("신중", "Careful", "しんちょう")
+        case .quirky:  names = ("변덕", "Quirky", "きまぐれ")
+        }
+        switch lang { case .ko: return names.0; case .en: return names.1; case .ja: return names.2 }
+    }
+}
+
+/// 게임 밸런스 — 개체 롤 확률.
+enum PokemonOdds {
+    /// 색이 다른 포켓몬(shiny) 부화 확률 분모 — 1/64 (본가 1/4096 은 데스크톱 앱 규모에선 평생 못 봄).
+    static let shinyDenominator: UInt64 = 64
+}
+
 /// 현재 키우는 포켓몬.
 struct MonState: Codable, Sendable {
     var baseID: Int
@@ -107,7 +155,34 @@ struct MonState: Codable, Sendable {
     var usedAtStage: Int    // 현재 형태에서 누적 사용량
     var rarity: Rarity
     var totalForms: Int
+    var isShiny = false             // 부화 시 확정, 진화해도 유지
+    var nature: PokemonNature?      // 부화 시 확정 (구버전 저장은 nil)
     var currentID: Int { pathIDs[min(stageIndex, pathIDs.count - 1)] }
+
+    init(baseID: Int, pathIDs: [Int], stageIndex: Int, usedAtStage: Int,
+         rarity: Rarity, totalForms: Int, isShiny: Bool = false, nature: PokemonNature? = nil) {
+        self.baseID = baseID
+        self.pathIDs = pathIDs
+        self.stageIndex = stageIndex
+        self.usedAtStage = usedAtStage
+        self.rarity = rarity
+        self.totalForms = totalForms
+        self.isShiny = isShiny
+        self.nature = nature
+    }
+
+    // 하위호환 디코딩: shiny/nature 는 구버전 저장에 없음 → 기본값.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        baseID = try c.decode(Int.self, forKey: .baseID)
+        pathIDs = try c.decode([Int].self, forKey: .pathIDs)
+        stageIndex = try c.decode(Int.self, forKey: .stageIndex)
+        usedAtStage = try c.decode(Int.self, forKey: .usedAtStage)
+        rarity = try c.decode(Rarity.self, forKey: .rarity)
+        totalForms = try c.decode(Int.self, forKey: .totalForms)
+        isShiny = try c.decodeIfPresent(Bool.self, forKey: .isShiny) ?? false
+        nature = try c.decodeIfPresent(PokemonNature.self, forKey: .nature)
+    }
 }
 
 /// 도감 항목 — 라인 전체(초기→최종) 순서 보존.
@@ -118,6 +193,32 @@ struct DexEntry: Codable, Sendable, Identifiable {
     var chainOrder: [Int]   // 초기→최종 종 id
     var rarity: Rarity
     var caughtAt: Date?
+    var isShiny = false
+    var nature: PokemonNature?
+
+    init(baseID: Int, finalID: Int, chainOrder: [Int], rarity: Rarity,
+         caughtAt: Date?, isShiny: Bool = false, nature: PokemonNature? = nil) {
+        self.baseID = baseID
+        self.finalID = finalID
+        self.chainOrder = chainOrder
+        self.rarity = rarity
+        self.caughtAt = caughtAt
+        self.isShiny = isShiny
+        self.nature = nature
+    }
+
+    // 하위호환 디코딩 (MonState 와 동일 이유).
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
+        baseID = try c.decode(Int.self, forKey: .baseID)
+        finalID = try c.decode(Int.self, forKey: .finalID)
+        chainOrder = try c.decode([Int].self, forKey: .chainOrder)
+        rarity = try c.decode(Rarity.self, forKey: .rarity)
+        caughtAt = try c.decodeIfPresent(Date.self, forKey: .caughtAt)
+        isShiny = try c.decodeIfPresent(Bool.self, forKey: .isShiny) ?? false
+        nature = try c.decodeIfPresent(PokemonNature.self, forKey: .nature)
+    }
 }
 
 /// 영속 상태(Application Support JSON). 포켓몬 전환 — 이전 커스텀 캐릭터 상태는 폐기(새로 시작).

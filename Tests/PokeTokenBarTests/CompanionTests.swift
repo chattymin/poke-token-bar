@@ -311,3 +311,110 @@ private final class MutableProvider: PokeProviding, @unchecked Sendable {
     nonisolated(unsafe) var line: EvoLine = makeLine(base: 1, tree: node(1))
     func line(baseSpeciesID: Int) async throws -> EvoLine { line }
 }
+
+// MARK: 개체 아이덴티티 (shiny / nature) — v2.2.0
+
+@MainActor
+final class CompanionIdentityTests: XCTestCase {
+    private func store(_ line: EvoLine, seed: UInt64) -> CompanionStore {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("poke-\(UUID().uuidString).json")
+        return CompanionStore(provider: StubProvider(value: line), clock: { fixedNow }, fileURL: url, rng: SeededRNG(seed: seed))
+    }
+
+    /// 직접 hatch(baseID:) 는 rng 를 shiny → nature 순으로 소비한다. 같은 시드 재생으로 기대값 산출.
+    private func expectedRoll(seed: UInt64) -> (shiny: Bool, nature: PokemonNature) {
+        var rng = SeededRNG(seed: seed)
+        let shiny = rng.next() % PokemonOdds.shinyDenominator == 0
+        let nature = PokemonNature.allCases[Int(rng.next() % UInt64(PokemonNature.allCases.count))]
+        return (shiny, nature)
+    }
+
+    /// 임의 시드에서 부화 롤이 결정적이고 성격이 항상 부여되는지.
+    func testHatchAssignsDeterministicShinyAndNature() async {
+        for seed: UInt64 in [1, 7, 42, 12345] {
+            let s = store(linear3, seed: seed)
+            let expected = expectedRoll(seed: seed)
+            await s.hatch(baseID: 1)
+            XCTAssertEqual(s.state.active?.isShiny, expected.shiny, "seed \(seed)")
+            XCTAssertEqual(s.state.active?.nature, expected.nature, "seed \(seed)")
+        }
+    }
+
+    /// shiny 가 실제로 나오는 시드를 탐색해 true 경로를 검증(1/64 확률이 코드에 존재함을 보장).
+    func testShinyPathReachable() async {
+        var shinySeed: UInt64?
+        for seed: UInt64 in 0..<5000 where expectedRoll(seed: seed).shiny { shinySeed = seed; break }
+        guard let seed = shinySeed else { return XCTFail("5000개 시드 중 shiny 없음 — 분모 확인") }
+        let s = store(linear3, seed: seed)
+        await s.hatch(baseID: 1)
+        XCTAssertEqual(s.state.active?.isShiny, true)
+        XCTAssertTrue(s.currentIsShiny)
+    }
+
+    /// 진화를 거쳐 졸업해도 shiny/nature 가 도감 항목에 보존되는지.
+    func testGraduateCarriesIdentityToDex() async {
+        let s = store(noEvo, seed: 3)   // 무진화 → 임계 도달 시 바로 졸업
+        await s.hatch(baseID: 20)
+        let shiny = s.state.active!.isShiny
+        let nature = s.state.active!.nature
+        XCTAssertNotNil(nature)
+        s.applyUsage(PokemonBalance.graduationTotal(.common))
+        XCTAssertNil(s.state.active)   // 졸업
+        XCTAssertEqual(s.state.dex.count, 1)
+        XCTAssertEqual(s.state.dex[0].isShiny, shiny)
+        XCTAssertEqual(s.state.dex[0].nature, nature)
+    }
+
+    /// 구버전 저장(shiny/nature 키 없음) 디코딩 — 기본값(false/nil)으로 로드.
+    func testBackwardCompatibleDecode() throws {
+        let old = """
+        {"installBaselineSet":true,"usedSinceInstall":100,"eggUsage":0,
+         "claimedTodayTokens":100,"lastDate":"d1",
+         "active":{"baseID":1,"pathIDs":[1],"stageIndex":0,"usedAtStage":5,"rarity":"common","totalForms":3},
+         "dex":[{"id":"x","baseID":4,"finalID":6,"chainOrder":[4,5,6],"rarity":"rare"}],
+         "collectedFinals":["4:6"],"language":"ko"}
+        """
+        let s = try JSONDecoder().decode(CompanionState.self, from: Data(old.utf8))
+        XCTAssertEqual(s.active?.isShiny, false)
+        XCTAssertNil(s.active?.nature)
+        XCTAssertEqual(s.dex[0].isShiny, false)
+        XCTAssertNil(s.dex[0].nature)
+        // 재인코딩 후 재디코딩도 안정적(라운드트립)
+        let round = try JSONDecoder().decode(CompanionState.self, from: JSONEncoder().encode(s))
+        XCTAssertEqual(round.active?.isShiny, false)
+    }
+
+    /// 부화/진화가 연출 트리거(celebrationSeq)를 올리고, consume 후 비워지는지.
+    func testCelebrationFiresOnHatchAndEvolve() async {
+        let s = store(linear3, seed: 9)
+        XCTAssertEqual(s.celebrationSeq, 0)
+        await s.hatch(baseID: 1)
+        XCTAssertEqual(s.celebrationSeq, 1)
+        if case .hatch = s.celebration {} else { XCTFail("hatch 연출이어야 함: \(String(describing: s.celebration))") }
+        s.consumeCelebration()
+        XCTAssertNil(s.celebration)
+        // 1단계 임계 도달 → 진화 연출
+        let thr = PokemonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0)
+        s.applyUsage(thr)
+        XCTAssertEqual(s.celebrationSeq, 2)
+        XCTAssertEqual(s.celebration, .evolve)
+    }
+
+    /// 스프라이트 캐시 키 — 기존 키("25-a"/"25-s") 불변 + shiny 접두.
+    func testSpriteCacheKeyScheme() {
+        XCTAssertEqual(SpriteStore.cacheKey(speciesID: 25, animated: true, shiny: false), "25-a")
+        XCTAssertEqual(SpriteStore.cacheKey(speciesID: 25, animated: false, shiny: false), "25-s")
+        XCTAssertEqual(SpriteStore.cacheKey(speciesID: 25, animated: true, shiny: true), "25-sha")
+        XCTAssertEqual(SpriteStore.cacheKey(speciesID: 25, animated: false, shiny: true), "25-shs")
+    }
+
+    /// 성격 25종 — 3개 언어 명칭이 전부 비어있지 않고 중복 없는지.
+    func testNatureNamesComplete() {
+        XCTAssertEqual(PokemonNature.allCases.count, 25)
+        for lang in AppLanguage.allCases {
+            let names = PokemonNature.allCases.map { $0.name(lang) }
+            XCTAssertEqual(Set(names).count, 25, "\(lang) 중복/누락")
+            XCTAssertFalse(names.contains(where: \.isEmpty))
+        }
+    }
+}
