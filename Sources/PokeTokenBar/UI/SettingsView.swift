@@ -20,6 +20,17 @@ struct SettingsView: View {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
     }
 
+    /// 푸터 링크 — 버전 표기와 동일한 크기·색을 상속하고 밑줄로만 구분(부모 HStack 스타일 사용).
+    private func footerLink(_ title: String, _ urlString: String) -> some View {
+        Button {
+            if let url = URL(string: urlString) { NSWorkspace.shared.open(url) }
+        } label: {
+            Text(title).underline()
+        }
+        .buttonStyle(.plain)
+        .help(urlString)
+    }
+
     var body: some View {
         @Bindable var store = store
         VStack(alignment: .leading, spacing: 14) {
@@ -138,9 +149,16 @@ struct SettingsView: View {
                 .foregroundStyle(.tertiary)
 
             HStack {
-                Text("v\(Self.appVersion)")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                HStack(spacing: 5) {
+                    // 버전과 같은 크기·색, 밑줄로만 링크임을 표시
+                    Text("v\(Self.appVersion)")
+                    Text("·")
+                    footerLink("GitHub", "https://github.com/chattymin/PokeTokenBar")
+                    Text("·")
+                    footerLink("Web", "https://chattymin.github.io/PokeTokenBar/")
+                }
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
                 Spacer()
                 Button(l.close) { onClose() }
                     .keyboardShortcut(.defaultAction)
