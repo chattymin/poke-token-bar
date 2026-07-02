@@ -157,9 +157,12 @@ final class CompanionStore {
     }
 
     /// 토큰 증분을 현재 포켓몬에 적용 — 임계 도달 시 진화/졸업.
+    /// 라인 미로딩(재시작 직후·오프라인)이어도 사용량은 항상 적립한다 — 여기서 드롭하면
+    /// claimedTodayTokens 는 이미 전진해 델타가 영구 유실된다. 진화 판정만 라인 로드 후로 미룬다.
     func applyUsage(_ delta: Int) {
-        guard state.active != nil, let line = currentLine else { return }
+        guard state.active != nil else { return }
         state.active!.usedAtStage += delta
+        guard let line = currentLine else { save(); return }
         var guardCount = 0
         while state.active != nil, guardCount < 50 {
             guardCount += 1
@@ -248,8 +251,10 @@ final class CompanionStore {
                              isShiny ? l.notifShinyHatchBody(name) : l.notifHatchBody(name))
         displayState = .levelUp
         eventUntil = clock().addingTimeInterval(4)
-        fireCelebration(.hatch(shiny: isShiny))
         if overflow > 0 { applyUsage(overflow) }   // 이월분 즉시 반영(필요 시 진화까지)
+        // 연출은 이월 진화 뒤에 발화 — 이월 evolve 가 shiny 부화 버스트를 덮지 않도록
+        // 마지막 이벤트를 hatch 로 유지한다. 이월로 즉시 졸업한 극단 케이스면 생략(이미 도감행).
+        if state.active != nil { fireCelebration(.hatch(shiny: isShiny)) }
         save()
     }
 
@@ -257,7 +262,10 @@ final class CompanionStore {
         guard let a = state.active, currentLine == nil, !isHatching else { return }
         isHatching = true
         defer { isHatching = false }
-        if let line = try? await provider.line(baseSpeciesID: a.baseID) { currentLine = line }
+        if let line = try? await provider.line(baseSpeciesID: a.baseID) {
+            currentLine = line
+            applyUsage(0)   // 라인 미로딩 동안 적립된 사용량이 임계를 넘었으면 지금 진화 판정
+        }
     }
 
     private func chooseBase() -> Int {

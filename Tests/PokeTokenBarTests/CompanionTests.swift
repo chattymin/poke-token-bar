@@ -400,6 +400,67 @@ final class CompanionIdentityTests: XCTestCase {
         XCTAssertEqual(s.celebration, .evolve)
     }
 
+    /// [회귀] 라인 미로딩(재시작 직후/오프라인) 중 델타가 유실되지 않고 적립, 라인 로드 후 진화 판정.
+    func testUsageAccruesWhileLineUnloadedThenEvolvesOnLoad() async {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("poke-\(UUID().uuidString).json")
+        // 1차 스토어: 부화 후 저장
+        let s1 = CompanionStore(provider: StubProvider(value: linear3), clock: { fixedNow },
+                                fileURL: url, rng: SeededRNG(seed: 5))
+        s1.update(todayTokens: 0, todayDate: "d1", monthTotal: 0, burnTier: .idle, limitWarning: false, hasUsageData: true)
+        await s1.hatch(baseID: 1)
+        XCTAssertNotNil(s1.state.active)
+
+        // 2차 스토어(재시작 시뮬레이션): active 는 로드됐지만 currentLine 은 nil
+        let s2 = CompanionStore(provider: StubProvider(value: linear3), clock: { fixedNow },
+                                fileURL: url, rng: SeededRNG(seed: 5))
+        XCTAssertNotNil(s2.state.active)
+        XCTAssertNil(s2.currentLine)
+        // 라인 없는 상태에서 stage0 임계(125M) 초과 델타 → 유실 없이 적립, 진화는 보류
+        s2.applyUsage(300_000_000)
+        XCTAssertEqual(s2.state.active?.usedAtStage, 300_000_000, "라인 미로딩 중 델타가 유실되면 안 된다")
+        XCTAssertEqual(s2.state.active?.stageIndex, 0)
+        // update → loadCurrentLine 완료 시 적립분으로 진화 판정(드레인)
+        s2.update(todayTokens: 0, todayDate: "d1", monthTotal: 0, burnTier: .idle, limitWarning: false, hasUsageData: true)
+        for _ in 0..<50 where s2.currentLine == nil { await Task.yield() }
+        XCTAssertNotNil(s2.currentLine)
+        XCTAssertEqual(s2.state.active?.stageIndex, 1, "라인 로드 후 적립분으로 진화해야 한다")
+        XCTAssertEqual(s2.state.active?.usedAtStage, 300_000_000 - 125_000_000)   // 초과분 이월
+    }
+
+    /// [회귀] 부화 이월(overflow)로 즉시 진화해도 마지막 연출은 hatch(shiny) — evolve 가 버스트를 덮지 않는다.
+    func testShinyBurstSurvivesOverflowEvolve() async {
+        // hatchIfNeeded 경로: chooseBase(1) → shiny(2) → nature(3) 순 rng 소비. shiny 시드 탐색.
+        func rollsShinyViaHatchIfNeeded(_ seed: UInt64) -> Bool {
+            var r = SeededRNG(seed: seed)
+            _ = r.next()   // chooseBase
+            return r.next() % PokemonOdds.shinyDenominator == 0
+        }
+        var seed: UInt64?
+        for s: UInt64 in 0..<20000 where rollsShinyViaHatchIfNeeded(s) { seed = s; break }
+        guard let seed else { return XCTFail("shiny 시드 탐색 실패") }
+
+        let s = store(linear3, seed: seed)
+        s.update(todayTokens: 0, todayDate: "d1", monthTotal: 0, burnTier: .idle, limitWarning: false, hasUsageData: true)
+        // 알 임계(5M) + stage0 임계(125M) 초과 → 부화 즉시 1회 진화하는 이월
+        s.update(todayTokens: 135_000_000, todayDate: "d1", monthTotal: 0, burnTier: .idle, limitWarning: false, hasUsageData: true)
+        await s.hatchIfNeeded()
+        XCTAssertEqual(s.state.active?.isShiny, true)
+        XCTAssertEqual(s.state.active?.stageIndex, 1, "이월로 1회 진화했어야 함")
+        XCTAssertEqual(s.celebration, .hatch(shiny: true), "evolve 가 shiny 부화 버스트를 덮으면 안 된다")
+    }
+
+    /// [회귀] 이월이 졸업 총량을 넘어 부화 즉시 졸업한 극단 케이스 — hatch 연출은 생략(이미 도감행).
+    func testHatchCelebrationSkippedOnInstantGraduate() async {
+        let s = store(noEvo, seed: 11)
+        s.update(todayTokens: 0, todayDate: "d1", monthTotal: 0, burnTier: .idle, limitWarning: false, hasUsageData: true)
+        // 알 임계 + 졸업 총량(750M) 초과
+        s.update(todayTokens: 800_000_000, todayDate: "d1", monthTotal: 0, burnTier: .idle, limitWarning: false, hasUsageData: true)
+        await s.hatchIfNeeded()
+        XCTAssertNil(s.state.active, "즉시 졸업")
+        XCTAssertEqual(s.state.dex.count, 1)
+        XCTAssertNil(s.celebration, "떠난 mon 의 hatch 연출을 재생하면 안 된다")
+    }
+
     /// 스프라이트 캐시 키 — 기존 키("25-a"/"25-s") 불변 + shiny 접두.
     func testSpriteCacheKeyScheme() {
         XCTAssertEqual(SpriteStore.cacheKey(speciesID: 25, animated: true, shiny: false), "25-a")

@@ -47,12 +47,14 @@ enum SpriteLoader {
     }()
 
     /// 디스크 캐시에 이미 있으면 동기 반환(네트워크 없음). 없으면 nil.
+    /// shiny 캐시 미스는 일반 캐시로 폴백 — 오프라인에서 live mon 이 알 글리프로 보이는 것 방지.
     static func cachedImage(speciesID: Int, animated: Bool = false, shiny: Bool = false) -> NSImage? {
         let ext = animated ? "gif" : "png"
         let key = SpriteStore.cacheKey(speciesID: speciesID, animated: animated, shiny: shiny)
         let f = cacheDir.appendingPathComponent("\(key).\(ext)")
-        guard let d = try? Data(contentsOf: f) else { return nil }
-        return NSImage(data: d)
+        if let d = try? Data(contentsOf: f), let img = NSImage(data: d) { return img }
+        guard shiny else { return nil }
+        return cachedImage(speciesID: speciesID, animated: animated, shiny: false)
     }
 
     /// 정적 스프라이트. animated=true 면 Gen-V 움직이는 스프라이트(없으면 정적으로 폴백).
