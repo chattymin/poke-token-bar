@@ -26,56 +26,55 @@ PokeTokenBar shows how many AI coding tokens you've burned today — Claude Code
 - Track official **5-hour / weekly** limits with reset countdowns and a burn-rate forecast for when you'll hit them.
 - …and actually enjoy opening it: your usage raises a Pokémon that evolves, graduates, and fills a Pokédex.
 
-## Screenshots
+<div align="center">
+<img src="assets/screenshot-home.gif" width="420" alt="Popover home — companion, today's tokens, official limits">
+</div>
+
+## How it works
+
+1. 🥚 **Code as usual.** The tokens you burn in Claude Code & Codex incubate an egg — nothing extra to run.
+2. 🐣 **Hatch.** Eggs hatch into Pokémon with real evolution lines from [PokéAPI](https://pokeapi.co/), rarity-weighted from common to legendary. Every hatch rolls one of 25 natures — and **1 in 64 is ✨ shiny**.
+3. ⚡ **Evolve.** Keep coding and it grows through its actual evolution tree (1/2/3 stages, branching), with a little flash celebration at each step.
+4. 🎓 **Graduate & collect.** Final form + threshold sends it to your **Pokédex** — rarer takes longer (≈3 days common → ≈24 days legendary at heavy use) — and a fresh egg arrives.
+
+## Tour
 
 <table>
 <tr>
-<td width="50%" valign="top">
-<img src="assets/screenshot-home.gif" alt="Popover home"><br>
-<b>Home</b> — companion + evolution progress, today's tokens (Claude Code + Codex with cost), and official 5h/weekly limit bars.
+<td width="55%" valign="middle">
+<h3>In your menu bar</h3>
+An animated Gen-V sprite lives next to today's total tokens (compact, e.g. <code>200.7M</code>). Add today's cost (<code>$</code>) or official limit <code>%</code> — or turn everything off for a character-only bar.
 </td>
-<td width="50%" valign="top">
-<img src="assets/screenshot-collection.png" alt="Collection / Pokédex"><br>
-<b>Collection (Pokédex)</b> — graduated Pokémon, sorted by rarity, with full evolution lines and capture dates.
+<td width="45%" align="center"><img src="assets/menubar.gif" width="240" alt="Menu bar"></td>
+</tr>
+<tr>
+<td width="45%" align="center"><img src="assets/shiny-banner.gif" width="340" alt="Normal vs shiny"></td>
+<td width="55%" valign="middle">
+<h3>✨ One in 64 is shiny</h3>
+Shiny hatches keep their distinct colors everywhere — menu bar, home card, evolution line, Pokédex — through every evolution. A dedicated notification makes sure you don't miss the moment.
 </td>
 </tr>
 <tr>
-<td width="50%" valign="top">
-<img src="assets/screenshot-empty.gif" alt="Empty Pokédex"><br>
-<b>Empty Pokédex</b> — an animated mascot nudges you to start.
+<td width="55%" valign="middle">
+<h3>A Pokédex worth filling</h3>
+Graduated Pokémon are preserved with their full evolution line, rarity, nature, and capture date — shinies wear a ✨ badge. Sorted so your rarest catches sit on top.
 </td>
-<td width="50%" valign="top">
-<img src="assets/menubar.gif" width="200" alt="Menu bar"><br>
-<b>Menu bar</b> — animated companion + today's tokens; add cost ($) or limit % in Settings.
-</td>
+<td width="45%" align="center"><img src="assets/screenshot-collection.png" width="300" alt="Pokédex"></td>
 </tr>
 <tr>
-<td width="50%" valign="top">
-<img src="assets/settings.png" alt="Settings"><br>
-<b>Settings</b> — menu-bar items (tokens / cost / limit %), refresh interval, launch at login, Keychain opt-out, and notification thresholds.
+<td width="45%" align="center"><img src="assets/settings.png" width="300" alt="Settings"></td>
+<td width="55%" valign="middle">
+<h3>Tune it your way</h3>
+Menu-bar items, refresh interval (1–15 min or manual), launch at login, a Keychain opt-out that just hides the limits section, limit alerts with warning/critical thresholds, and companion event notifications. Full <b>KO / EN / JA</b> UI and Pokémon names.
 </td>
-<td width="50%" valign="top"></td>
 </tr>
 </table>
 
-## The companion
+## Also in the box
 
-- **Hatch & evolve** — eggs hatch into Pokémon fetched live from [PokéAPI](https://pokeapi.co/); tokens spent since install evolve them through their real tree (1/2/3 stages, branching).
-- **Rarity-weighted** — common hatch often, legendary rarely; rarer Pokémon take more tokens to graduate (≈3 days common → ≈24 days legendary at heavy use).
-- **Graduate & collect** — reach the final evolution + threshold and it graduates to your **Pokédex**; a fresh egg arrives.
-- **Shiny & natures** — 1-in-64 hatches are ✨ shiny (distinct colors, kept through evolution); every Pokémon gets one of 25 natures.
-- **Animated** — Gen-V sprites animate in the menu bar and popover. Names & UI in **Korean / English / Japanese**.
-
-## Features
-
-- **Live token usage** — today's Claude Code + Codex tokens, refreshed every 1–15 min (or manually).
-- **Menu bar, your way** — show any mix of today's tokens (compact, e.g. `200.7M`), today's cost (`$`), and official limit `%` next to the companion — or none, for a character-only menu bar.
-- **Official limits** — Claude & Codex 5-hour / weekly utilization with reset countdowns.
+- **Official limits** — Claude & Codex 5-hour / weekly utilization with reset countdowns, right under today's numbers.
 - **Burn-rate forecast** — projects when the current 5h window hits 100%.
-- **Growth companion + Pokédex** — the part you actually look forward to.
-- **Localized** — full KO / EN / JA UI and Pokémon names.
-- **Notifications** — limit alerts with adjustable warning / critical thresholds, plus optional companion events (hatch / evolve / graduate).
-- **Quality of life** — launch at login, in-app update check (current version shown in Settings), and a Keychain opt-out that just hides the limits section.
+- **In-app updates** — one-click update check; current version shown in Settings.
 
 ## Install
 

@@ -26,56 +26,55 @@ PokeTokenBar는 오늘 사용한 AI 코딩 토큰(Claude Code · Codex)을 macOS
 - 공식 **5시간 / 주간** 한도를 리셋 카운트다운과 함께 추적하고, 현재 burn rate로 언제 도달할지 예측합니다.
 - …그리고 열어보는 게 즐거워집니다: 사용량이 포켓몬을 키우고, 진화시키고, 졸업시켜 도감을 채웁니다.
 
-## 화면
+<div align="center">
+<img src="assets/screenshot-home.gif" width="420" alt="팝오버 홈 — companion, 오늘 토큰, 공식 한도">
+</div>
+
+## 어떻게 자라나요
+
+1. 🥚 **평소처럼 코딩하세요.** Claude Code·Codex 에서 태우는 토큰이 알을 품습니다 — 따로 돌릴 건 없어요.
+2. 🐣 **부화.** [PokéAPI](https://pokeapi.co/)의 실제 진화 계보를 가진 포켓몬이 희귀도 가중(common→legendary)으로 태어납니다. 부화마다 25종 성격 중 하나가 정해지고 — **64마리 중 1마리는 ✨ 색이 다릅니다**.
+3. ⚡ **진화.** 계속 코딩하면 실제 진화 트리(1/2/3단, 분기)를 따라 자라고, 단계마다 작은 연출이 반겨줍니다.
+4. 🎓 **졸업 & 수집.** 최종 진화 + 임계 도달 시 **도감**에 보존됩니다 — 희귀할수록 오래 걸리고(헤비 유저 기준 common ≈3일 → legendary ≈24일) — 새 알이 도착합니다.
+
+## 둘러보기
 
 <table>
 <tr>
-<td width="50%" valign="top">
-<img src="assets/screenshot-home.gif" alt="팝오버 홈"><br>
-<b>홈</b> — companion·진화 진행, 오늘 토큰(Claude Code + Codex, 비용 포함), 공식 5h/주간 한도 바.
+<td width="55%" valign="middle">
+<h3>메뉴바 속 파트너</h3>
+움직이는 Gen-V 스프라이트가 오늘 토큰 합계(compact, 예: <code>200.7M</code>) 옆에 삽니다. 오늘 비용(<code>$</code>)이나 공식 한도 <code>%</code> 를 더하거나 — 전부 꺼서 캐릭터만 남길 수도 있어요.
 </td>
-<td width="50%" valign="top">
-<img src="assets/screenshot-collection.png" alt="컬렉션 / 도감"><br>
-<b>컬렉션(도감)</b> — 졸업한 포켓몬을 희귀도순으로, 전체 진화 라인과 획득일과 함께.
+<td width="45%" align="center"><img src="assets/menubar.gif" width="240" alt="메뉴바"></td>
+</tr>
+<tr>
+<td width="45%" align="center"><img src="assets/shiny-banner.gif" width="340" alt="일반 vs 색이 다른 포켓몬"></td>
+<td width="55%" valign="middle">
+<h3>✨ 64마리 중 1마리</h3>
+색이 다른 개체는 메뉴바·홈 카드·진화 라인·도감 어디서나 전용 색으로 표시되고, 진화를 거쳐도 유지됩니다. 전용 알림이 그 순간을 놓치지 않게 해줘요.
 </td>
 </tr>
 <tr>
-<td width="50%" valign="top">
-<img src="assets/screenshot-empty.gif" alt="빈 도감"><br>
-<b>빈 도감</b> — 움직이는 마스코트가 시작을 안내합니다.
+<td width="55%" valign="middle">
+<h3>채우고 싶어지는 도감</h3>
+졸업한 포켓몬은 전체 진화 라인·희귀도·성격·획득일과 함께 보존됩니다 — 색이 다른 개체는 ✨ 배지를 답니다. 가장 희귀한 수집이 맨 위에 오도록 정렬돼요.
 </td>
-<td width="50%" valign="top">
-<img src="assets/menubar.gif" width="200" alt="메뉴바"><br>
-<b>메뉴바</b> — 움직이는 companion + 오늘 토큰 합계. 설정에서 비용($)·한도 % 추가 가능.
-</td>
+<td width="45%" align="center"><img src="assets/screenshot-collection.png" width="300" alt="도감"></td>
 </tr>
 <tr>
-<td width="50%" valign="top">
-<img src="assets/settings.png" alt="설정"><br>
-<b>설정</b> — 메뉴바 표시 항목(토큰/비용/한도 %), 새로고침 간격, 로그인 시 자동 시작, Keychain 끄기, 알림 임계값.
+<td width="45%" align="center"><img src="assets/settings.png" width="300" alt="설정"></td>
+<td width="55%" valign="middle">
+<h3>설정에서 취향대로</h3>
+메뉴바 표시 항목, 새로고침 간격(1–15분/수동), 로그인 시 자동 시작, 한도 섹션만 숨기는 Keychain 끄기, 경고/임박 임계값 한도 알림, companion 이벤트 알림. <b>한국어/영어/일본어</b> UI·포켓몬 이름 완비.
 </td>
-<td width="50%" valign="top"></td>
 </tr>
 </table>
 
-## Companion
+## 이 밖에도
 
-- **부화 & 진화** — 알은 [PokéAPI](https://pokeapi.co/)에서 실시간으로 받아온 포켓몬으로 부화하고, 설치 이후 사용한 토큰으로 실제 진화 트리(1/2/3단, 분기)를 따라 진화합니다.
-- **희귀도 가중** — common은 자주, legendary는 드물게 부화합니다. 희귀할수록 졸업까지 더 많은 토큰이 듭니다(헤비 유저 기준 common ≈3일 → legendary ≈24일).
-- **졸업 & 수집** — 최종 진화 + 임계 도달 시 **도감**에 졸업하고, 새 알이 도착합니다.
-- **색이 다른 포켓몬 & 성격** — 1/64 확률로 ✨ 색이 다른 개체가 부화하고(전용 색상, 진화해도 유지), 모든 포켓몬이 25종 성격 중 하나를 갖습니다.
-- **애니메이션** — Gen-V 스프라이트가 메뉴바와 팝오버에서 움직입니다. 이름·UI는 **한국어 / 영어 / 일본어**.
-
-## 기능
-
-- **실시간 토큰 사용량** — 오늘의 Claude Code + Codex 토큰, 1–15분 간격(또는 수동)으로 갱신.
-- **메뉴바 커스터마이즈** — 오늘 토큰(compact, 예: `200.7M`)·오늘 비용($)·공식 한도 % 를 원하는 조합으로 companion 옆에 표시 — 전부 끄면 캐릭터만 남습니다.
-- **공식 한도** — Claude·Codex 5시간 / 주간 사용률과 리셋 카운트다운.
+- **공식 한도** — Claude·Codex 5시간/주간 사용률 + 리셋 카운트다운을 오늘 숫자 바로 아래에.
 - **소진 예측** — 현재 5시간 창이 100%에 도달할 시각 예측.
-- **성장 companion + 도감** — 매일 열어보고 싶어지는 부분.
-- **현지화** — KO / EN / JA UI와 포켓몬 이름 완비.
-- **알림** — 한도 경고/임박 임계값(슬라이더 조절) 알림 + companion 이벤트(부화/진화/졸업) 알림 선택.
-- **편의 기능** — 로그인 시 자동 시작, 인앱 업데이트 확인(설정에 현재 버전 표시), Keychain 끄기(한도 섹션만 숨김).
+- **인앱 업데이트** — 원클릭 업데이트 확인, 설정에 현재 버전 표시.
 
 ## 설치
 
